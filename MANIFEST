@@ -1,0 +1,37 @@
+Changes                             History of this package
+coverage.sh                         Control code coverage
+example.pl                          JobQueue client demonstration
+MANIFEST                            This file
+Makefile.PL                         Makefile generator
+README                              Get you started with this package
+lib/Redis/JobQueue.pm               Object interface for the job queues management
+lib/Redis/JobQueue/Job.pm           Object interface for the objects jobs
+t/00_compile.t
+t/95_critic.t
+t/96_kwalitee.t
+t/97_distribution.t
+t/98_pod.t
+t/99_pod_coverage.t
+t/00_Job/00_compile.t
+t/00_Job/01_new.t
+t/00_Job/02_accessor.t
+t/00_Job/03_variability.t
+t/00_Job/04_job_attributes.t
+t/00_Job/98_pod.t
+t/00_Job/99_pod_coverage.t
+t/01_JobQueue/00_compile.t
+t/01_JobQueue/01_new.t
+t/01_JobQueue/02_add_job.t
+t/01_JobQueue/03_check_job_status.t
+t/01_JobQueue/04_load_job.t
+t/01_JobQueue/05_get_next_job.t
+t/01_JobQueue/06_update_job.t
+t/01_JobQueue/07_delete_job.t
+t/01_JobQueue/08_get_jobs.t
+t/01_JobQueue/09_quit.t
+t/01_JobQueue/10_max_datasize.t
+t/01_JobQueue/11_last_errorcode.t
+t/01_JobQueue/98_pod.t
+t/01_JobQueue/99_pod_coverage.t
+META.yml                            Module meta-data (added by MakeMaker)
+META.json                           Module meta-data (added by MakeMaker)

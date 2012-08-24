@@ -1,0 +1,51 @@
+{
+   "abstract" : "Redis::JobQueue simple job queue with Redis server capabilities.",
+   "author" : [
+      "TrackingSoft LLC <sgladkov@trackingsoft.com>"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.120921",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Redis-JobQueue",
+   "no_index" : {
+      "directory" : [
+         "t",
+         "inc"
+      ]
+   },
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "Test::Distribution" : "2",
+            "Test::Exception" : "0.31",
+            "Test::Kwalitee" : "1.01",
+            "Test::Perl::Critic" : "1.02",
+            "Test::Pod" : "1.45",
+            "Test::Pod::Coverage" : "1.08",
+            "Test::RedisServer" : "0.04",
+            "Test::TCP" : "1.17"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "ExtUtils::MakeMaker" : "0"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Data::UUID" : "1.217",
+            "Mouse" : "0.97",
+            "Params::Util" : "1.07",
+            "Redis" : "1.926"
+         }
+      }
+   },
+   "release_status" : "stable",
+   "version" : "0.01"
+}
