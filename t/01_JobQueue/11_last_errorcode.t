@@ -190,18 +190,24 @@ SKIP:
     $pre_job->{result} .= '*' x ( 1024 * 10 );
     $pre_job->{expire} = 0;
 
-    eval { $job = $jq->add_job( $pre_job ) } for ( 1..1024 );
-
-    eval {
-        while ( my $job = $jq->get_next_job(
-            queue       => $pre_job->{queue},
-            job         => $pre_job->{job},
-            blocking    => 1
-            ) )
+    {
+        do
         {
-            ;
-        }
-    };
+            eval { $job = $jq->add_job( $pre_job ) } for ( 1..1024 );
+        } until ( $jq->_call_redis( "KEYS", "JobQueue:queue:*" ) );
+
+        eval {
+            while ( my $job = $jq->get_next_job(
+                queue       => $pre_job->{queue},
+                job         => $pre_job->{job},
+                blocking    => 1
+                ) )
+            {
+                ;
+            }
+        };
+        redo unless ( $jq->last_errorcode == EMAXMEMORYPOLICY );
+    }
     ok $@, "exception";
     is $jq->last_errorcode, EMAXMEMORYPOLICY, "EMAXMEMORYPOLICY";
     note '$@: ', $@;

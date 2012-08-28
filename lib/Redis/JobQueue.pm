@@ -1,12 +1,12 @@
 package Redis::JobQueue;
-use 5.014002;
+use 5.014;
 
 # Pragmas
 use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -607,19 +607,19 @@ __END__
 
 =head1 NAME
 
-Redis::JobQueue - object interface for the creation, execution the job queues,
+Redis::JobQueue - Object interface for the creation, execution the job queues,
 as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.01
+This documentation refers to C<Redis::JobQueue> version 0.02
 
 =head1 SYNOPSIS
 
     #-- Common
     use Redis::JobQueue qw( DEFAULT_SERVER DEFAULT_PORT );
 
-    my $connection_string = DEFAULT_SERVER.":".DEFAULT_PORT;
+    my $connection_string = DEFAULT_SERVER.':'.DEFAULT_PORT;
     my $jq = Redis::JobQueue->new( redis => $connection_string );
 
     #-- Producer
@@ -734,7 +734,7 @@ a C<Redis::JobQueue> object that is configured
 to work with the default settings.
 
 If invoked with the first argument being an object of C<Redis::JobQueue>
-class or L<Redis|Redis> class, then the new object attribute values ​​are taken from
+class or L<Redis|Redis> class, then the new object attribute values are taken from
 the object of the first argument. It does not create a new connection to
 the Redis server.
 A created object uses the default value L</DEFAULT_TIMEOUT> when
@@ -949,7 +949,7 @@ structure (on Redis server) look at the L</"JobQueue data structure"> section.
 
 =head3 C<get_jobs>
 
-Gets a list of jobs on the Redis server.
+Gets a list of job ids on the Redis server.
 
 The following examples illustrate uses of the C<get_jobs> method:
 
@@ -985,7 +985,7 @@ L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 The C<max_datasize> attribute value is used in the L<constructor|/CONSTRUCTOR>
 and operations data entry jobs on the Redis server.
 
-The L<constructor|/CONSTRUCTOR> uses the smaller of the values ​​of 512MB and
+The L<constructor|/CONSTRUCTOR> uses the smaller of the values of 512MB and
 C<maxmemory> limit from a C<redis.conf> file.
 
 =head3 C<last_errorcode>
@@ -1110,11 +1110,11 @@ This means that an error in connection to Redis server was detected.
 
 =item C<EMAXMEMORYLIMIT>
 
-This means that the command not allowed when used memory > 'maxmemory'.
+This means that the command not allowed when used memory > C<maxmemory>.
 
 =item C<EMAXMEMORYPOLICY>
 
-This means that the job was removed by maxmemory-policy.
+This means that the job was removed by C<maxmemory-policy>.
 
 =item C<EJOBDELETED>
 
@@ -1148,7 +1148,7 @@ The example shows a possible treatment for possible errors.
         EREDIS
         );
 
-    my $server = DEFAULT_SERVER.":".DEFAULT_PORT;   # the Redis Server
+    my $server = DEFAULT_SERVER.':'.DEFAULT_PORT;   # the Redis Server
 
     # A possible treatment for possible errors
     sub exception {
@@ -1227,7 +1227,7 @@ The example shows a possible treatment for possible errors.
             } );
     };
     exception( $jq, $@ ) if $@;
-    say "Added job ", $job->id if $job;
+    say 'Added job ', $job->id if $job;
 
     #-- Worker ---------------------------------------------------------------
     #-- Run your jobs
@@ -1326,7 +1326,7 @@ The example shows a possible treatment for possible errors.
                 # now safe to compelete it from JobQueue, since it's completed
                 $jq->delete_job( $id );
 
-                say "Job result: ", ${$job->result};
+                say 'Job result: ', ${$job->result};
             }
             else
             {
@@ -1360,7 +1360,7 @@ For example:
     #      |                 |
     #   Namespace            |
     #                     Job id (UUID)
-    # ...
+    ...
     redis 127.0.0.1:6379> hgetall JobQueue:478B9C84-C5B8-11E1-A2C5-D35E0A986783
     1) "queue"                                  # hash key
     2) "xxx"                                    # the key value
@@ -1371,7 +1371,7 @@ For example:
     7) "expire"                                 # hash key
     8) "43200"                                  # the key value
     9) "status"                                 # hash key
-    10) "created"                               # the key value
+    10) "_created_"                             # the key value
 
 After you create (L</add_job> method) or modify (L</update_job> method)
 the data set are within the time specified C<expire> attribute (seconds).
@@ -1388,7 +1388,7 @@ Hash of the job data is deleted when you delete the job (L</delete_job> method).
 For example:
 
     redis 127.0.0.1:6379> KEYS JobQueue:*
-    # ...
+    ...
     4) "JobQueue:queue:xxx:yyy"
     5) "JobQueue:queue:xxx:zzz"
     #      |       |    |   |
@@ -1396,12 +1396,14 @@ For example:
     #    Fixed key word |   |
     #            Queue name |
     #                   Job name
+    ...
     redis 127.0.0.1:6379> LRANGE JobQueue:queue:xxx:yyy 0 -1
     1) "478B9C84-C5B8-11E1-A2C5-D35E0A986783 1344070066"
     2) "89116152-C5BD-11E1-931B-0A690A986783 1344070067"
     #                        |                   |
     #                     Job id (UUID)          |
     #                                      Expire time (UTC)
+    ...
 
 Please keep in mind that each job has a separate queue.
 
@@ -1411,7 +1413,7 @@ Job queue will be deleted automatically in the exhaustion of its contents.
 =head1 DEPENDENCIES
 
 In order to install and use this package is desirable to use a Perl version
-5.014002 or later. Some modules within this package depend on other
+5.014 or later. Some modules within this package depend on other
 packages that are distributed separately from Perl. We recommend that
 you have the following packages installed before you install C<Redis::JobQueue>
 package:
@@ -1436,11 +1438,11 @@ If the optional modules are missing, some "prereq" tests are skipped.
 
 =head1 BUGS AND LIMITATIONS
 
-The use of C<maxmemory-police all*> in the 'redis.conf' file could lead to
+The use of C<maxmemory-police all*> in the C<redis.conf> file could lead to
 a serious (but hard to detect) problem as Redis server may delete
 the job queue lists.
 
-We strongly recommend using the option C<maxmemory> in the 'redis.conf' file if
+We strongly recommend using the option C<maxmemory> in the C<redis.conf> file if
 the data set may be large.
 
 The C<Redis::JobQueue> package was written, tested, and found working on recent

@@ -29,4 +29,4 @@ requires:
   Mouse: 0.97
   Params::Util: 1.07
   Redis: 1.926
-version: 0.01
+version: 0.02

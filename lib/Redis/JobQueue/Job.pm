@@ -1,12 +1,12 @@
 package Redis::JobQueue::Job;
-use 5.014002;
+use 5.014;
 
 # Pragmas
 use bytes;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 #-- load the modules -----------------------------------------------------------
 
@@ -178,12 +178,11 @@ __END__
 
 =head1 NAME
 
-Redis::JobQueue::Job - object interface for jobs creating and manipulating
+Redis::JobQueue::Job - Object interface for jobs creating and manipulating
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job>
-version 0.01
+This documentation refers to C<Redis::JobQueue::Job> version 0.02
 
 =head1 SYNOPSIS
 
@@ -266,7 +265,7 @@ It generates a Job object and can be called as either a class method or
 an object method.
 
 If invoked with the first argument being an object of C<Redis::JobQueue::Job> class
-or a reference to a hash, then the new object attribute values ​​are taken from
+or a reference to a hash, then the new object attribute values are taken from
 the hash of the first argument.
 
 C<new> optionally takes arguments. These arguments are in key-value pairs.
@@ -285,16 +284,16 @@ This example illustrates a C<new()> call with all the valid arguments:
         expire      => 12*60*60,        # Job's time to live in seconds.
                                         # 0 for no expire time.
                                         # (required)
-        status      => 'created',       # Current status of the job.
+        status      => '_created_',     # Current status of the job.
                 # Do not use it because value should be set by the worker.
         workload    => \'Some stuff up to 512MB long',
                 # Baseline data for the function of the worker
-                # (the function name specified in the C<job>).
+                # (the function name specified in the 'job').
                 # For example, can be prepared by a function
-                # C<Storable::freeze>.
+                # 'Storable::freeze'.
         result      => \'JOB result comes here, up to 512MB long',
                 # The result of the function of the worker
-                # (the function name specified in the C<job>).
+                # (the function name specified in the 'job').
                 # Do not use it because value should be set by the worker.
         );
 
@@ -378,12 +377,12 @@ C<result>: 512MB.
 
 =head2 DIAGNOSTICS
 
-An error will cause the program to halt if the argument is not valid. Use C<$@>
-for the analysis of the specific reasons.
+An error will cause the program to halt (C<confess>) if the argument
+is not valid. Use C<$@> for the analysis of the specific reasons.
 
 =head1 SEE ALSO
 
-The basic operation of the C<Redis::JobQueue> package modules:
+The basic operation of the L<Redis::JobQueue|Redis::JobQueue> package modules:
 
 L<Redis::JobQueue|Redis::JobQueue> - Object interface for creating,
 executing jobs queues, as well as monitoring the status and results of jobs.

@@ -1,4 +1,8 @@
 Revision history for Redis::JobQueue package
 
-0.01  Tue Aug  18 2012
+0.02  Tue Aug  28 2012
+    BUGFIXES:
+    - Minor changes in documentation
+
+0.01  Tue Aug  27 2012
     - Original version
