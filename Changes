@@ -1,5 +1,12 @@
 Revision history for Redis::JobQueue package
 
+0.03  Tue Aug  30 2012
+    CHANGES:
+    - Added test 't/94_fixme.t'
+
+    BUGFIXES:
+    - Fixed version number to 'use 5.010'
+
 0.02  Tue Aug  28 2012
     BUGFIXES:
     - Minor changes in documentation

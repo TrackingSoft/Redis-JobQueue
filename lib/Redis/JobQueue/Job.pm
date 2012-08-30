@@ -1,12 +1,12 @@
 package Redis::JobQueue::Job;
-use 5.014;
+use 5.010;
 
 # Pragmas
 use bytes;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 #-- load the modules -----------------------------------------------------------
 
@@ -182,7 +182,7 @@ Redis::JobQueue::Job - Object interface for jobs creating and manipulating
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 0.02
+This documentation refers to C<Redis::JobQueue::Job> version 0.03
 
 =head1 SYNOPSIS
 

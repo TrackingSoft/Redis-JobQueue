@@ -7,6 +7,7 @@ README                              Get you started with this package
 lib/Redis/JobQueue.pm               Object interface for the job queues management
 lib/Redis/JobQueue/Job.pm           Object interface for the objects jobs
 t/00_compile.t
+t/94_fixme.t
 t/95_critic.t
 t/96_kwalitee.t
 t/97_distribution.t

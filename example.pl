@@ -4,7 +4,7 @@
 
 #-- Common ---------------------------------------------------------------------
 
-use 5.014;
+use 5.010;
 use strict;
 use warnings;
 
@@ -104,7 +104,7 @@ eval {
         } );
 };
 exception( $jq, $@ ) if $@;
-say "Added job ", $job->id if $job;
+print "Added job ", $job->id, "\n" if $job;
 
 #-- Worker ---------------------------------------------------------------------
 
@@ -115,7 +115,7 @@ sub yyy {
 
     my $workload = ${$job->workload};
     # do something with workload;
-    say "YYY workload: $workload";
+    print "YYY workload: $workload\n";
 
     $job->result( 'YYY JOB result comes here, up to 512MB long' );
 }
@@ -125,7 +125,7 @@ sub zzz {
 
     my $workload = ${$job->workload};
     # do something with workload;
-    say "ZZZ workload: $workload";
+    print "ZZZ workload: $workload\n";
 
     $job->result( \'ZZZ JOB result comes here, up to 512MB long' );
 }
@@ -140,13 +140,13 @@ eval {
         my $id = $job->id;
 
         my $status = $jq->check_job_status( $id );
-        say "Job '", $id, "' was '$status' status";
+        print "Job '", $id, "' was '$status' status\n";
 
         $job->status( STATUS_WORKING );
         $jq->update_job( $job );
 
         $status = $jq->check_job_status( $id );
-        say "Job '", $id, "' has new '$status' status";
+        print "Job '", $id, "' has new '$status' status\n";
 
         # do my stuff
         if ( $job->job eq 'yyy' )
@@ -162,7 +162,7 @@ eval {
         $jq->update_job( $job );
 
         $status = $jq->check_job_status( $id );
-        say "Job '", $id, "' has last '$status' status";
+        print "Job '", $id, "' has last '$status' status\n";
     }
 };
 exception( $jq, $@ ) if $@;
@@ -180,7 +180,7 @@ eval {
     foreach my $id ( @jobs )
     {
         my $status = $jq->check_job_status( $id );
-        say "Job '$id' has '$status' status";
+        print "Job '$id' has '$status' status\n";
     }
 };
 exception( $jq, $@ ) if $@;
@@ -196,7 +196,7 @@ eval {
     foreach my $id ( @jobs )
     {
         my $status = $jq->check_job_status( $id );
-        say "Job '$id' has '$status' status";
+        print "Job '$id' has '$status' status\n";
 
         if ( $status eq STATUS_COMPLETED )
         {
@@ -205,11 +205,11 @@ eval {
             # now safe to compelete it from JobQueue, since it's completed
             $jq->delete_job( $id );
 
-            say "Job result: ", ${$job->result};
+            print "Job result: ", ${$job->result}, "\n";
         }
         else
         {
-            say "Job is not complete, has current '$status' status";
+            print "Job is not complete, has current '$status' status\n";
         }
     }
 };

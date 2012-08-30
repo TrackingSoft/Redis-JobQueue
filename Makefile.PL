@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-use 5.014;
+use 5.010;
 use strict;
 use warnings;
 
@@ -10,7 +10,7 @@ use ExtUtils::MakeMaker qw( prompt );
 my %config = (
     NAME                        => 'Redis::JobQueue',
     VERSION_FROM                => 'lib/Redis/JobQueue.pm',
-# more to the list $Module::CoreList::version{5.014002}
+# more to the list $Module::CoreList::version{5.010}
     PREREQ_PM                   => {
         'Data::UUID'            => 1.217,
         'Mouse'                 => 0.97,
@@ -20,6 +20,7 @@ my %config = (
     BUILD_REQUIRES              => {
         'Test::Distribution'    => 2.00,
         'Test::Exception'       => 0.31,
+        'Test::Fixme'           => 0.07,
         'Test::Kwalitee'        => 1.01,
         'Test::Perl::Critic'    => 1.02,
         'Test::Pod'             => 1.45,

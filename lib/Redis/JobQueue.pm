@@ -1,12 +1,12 @@
 package Redis::JobQueue;
-use 5.014;
+use 5.010;
 
 # Pragmas
 use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -612,7 +612,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.02
+This documentation refers to C<Redis::JobQueue> version 0.03
 
 =head1 SYNOPSIS
 
@@ -671,11 +671,11 @@ This documentation refers to C<Redis::JobQueue> version 0.02
         my $job = $jq->load_job( $id );
 
         $jq->delete_job( $id );
-        say "Job result: ".${$job->result};
+        print "Job result: ", ${$job->result}, "\n";
     }
     else
     {
-        say "Job is not complete, has current '$status' status";
+        print "Job is not complete, has current '$status' status\n";
     }
 
 To see a brief but working code example of the C<Redis::JobQueue>
@@ -1227,7 +1227,7 @@ The example shows a possible treatment for possible errors.
             } );
     };
     exception( $jq, $@ ) if $@;
-    say 'Added job ', $job->id if $job;
+    print 'Added job ', $job->id, "\n" if $job;
 
     #-- Worker ---------------------------------------------------------------
     #-- Run your jobs
@@ -1237,7 +1237,7 @@ The example shows a possible treatment for possible errors.
 
         my $workload = ${$job->workload};
         # do something with workload;
-        say "YYY workload: $workload";
+        print "YYY workload: $workload\n";
 
         $job->result( 'YYY JOB result comes here, up to 512MB long' );
     }
@@ -1247,7 +1247,7 @@ The example shows a possible treatment for possible errors.
 
         my $workload = ${$job->workload};
         # do something with workload;
-        say "ZZZ workload: $workload";
+        print "ZZZ workload: $workload\n";
 
         $job->result( \'ZZZ JOB result comes here, up to 512MB long' );
     }
@@ -1262,13 +1262,13 @@ The example shows a possible treatment for possible errors.
             my $id = $job->id;
 
             my $status = $jq->check_job_status( $id );
-            say "Job '", $id, "' was '$status' status";
+            print "Job '", $id, "' was '$status' status\n";
 
             $job->status( STATUS_WORKING );
             $jq->update_job( $job );
 
             $status = $jq->check_job_status( $id );
-            say "Job '", $id, "' has new '$status' status";
+            print "Job '", $id, "' has new '$status' status\n";
 
             # do my stuff
             if ( $job->job eq 'yyy' )
@@ -1284,7 +1284,7 @@ The example shows a possible treatment for possible errors.
             $jq->update_job( $job );
 
             $status = $jq->check_job_status( $id );
-            say "Job '", $id, "' has last '$status' status";
+            print "Job '", $id, "' has last '$status' status\n";
         }
     };
     exception( $jq, $@ ) if $@;
@@ -1301,7 +1301,7 @@ The example shows a possible treatment for possible errors.
         foreach my $id ( @jobs )
         {
             my $status = $jq->check_job_status( $id );
-            say "Job '$id' has '$status' status";
+            print "Job '$id' has '$status' status\n";
         }
     };
     exception( $jq, $@ ) if $@;
@@ -1317,7 +1317,7 @@ The example shows a possible treatment for possible errors.
         foreach my $id ( @jobs )
         {
             my $status = $jq->check_job_status( $id );
-            say "Job '$id' has '$status' status";
+            print "Job '$id' has '$status' status\n";
 
             if ( $status eq STATUS_COMPLETED )
             {
@@ -1326,11 +1326,11 @@ The example shows a possible treatment for possible errors.
                 # now safe to compelete it from JobQueue, since it's completed
                 $jq->delete_job( $id );
 
-                say 'Job result: ', ${$job->result};
+                print 'Job result: ', ${$job->result}, "\n";
             }
             else
             {
-                say "Job is not complete, has current '$status' status";
+                print "Job is not complete, has current '$status' status\n";
             }
         }
     };
@@ -1413,7 +1413,7 @@ Job queue will be deleted automatically in the exhaustion of its contents.
 =head1 DEPENDENCIES
 
 In order to install and use this package is desirable to use a Perl version
-5.014 or later. Some modules within this package depend on other
+5.010 or later. Some modules within this package depend on other
 packages that are distributed separately from Perl. We recommend that
 you have the following packages installed before you install C<Redis::JobQueue>
 package:
