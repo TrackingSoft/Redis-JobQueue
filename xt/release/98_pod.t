@@ -9,5 +9,5 @@ use File::Basename;
 
 eval "use Test::Pod";
 plan skip_all => "Test::Pod required for testing POD" if $@;
-chdir dirname( $0 )."/../lib/Redis";
+chdir dirname( $0 )."/../../lib/Redis";
 all_pod_files_ok( "JobQueue.pm" );

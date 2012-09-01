@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.03';
+our $VERSION = '0.06';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -79,6 +79,7 @@ my %ERROR = (
     );
 
 my @job_fields = Redis::JobQueue::Job->job_attributes;
+my $uuid = new Data::UUID;
 
 #-- constructor ----------------------------------------------------------------
 
@@ -204,7 +205,6 @@ sub add_job {
             if ( $k =~ /^LPUSH$/i and $args{ $k } );
     }
 
-    my $uuid = new Data::UUID;
     my $id;
     do
     {
@@ -311,7 +311,6 @@ sub get_next_job {
     {
         foreach my $key ( @keys )
         {
-            next unless $self->_call_redis( 'EXISTS', $key );
 # 'BLPOP' waiting time of a given $self->timeout parameter
             my @cmd = ( 'BLPOP', $key, $self->timeout );
             while (1)
@@ -612,7 +611,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.03
+This documentation refers to C<Redis::JobQueue> version 0.06
 
 =head1 SYNOPSIS
 

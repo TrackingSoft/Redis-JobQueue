@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 26;
+use Test::More tests => 24;
 
 BEGIN {
     eval "use Test::Exception";
@@ -57,7 +57,8 @@ foreach my $expire ( ( -1, -3, "", "0.5", \"scalar", [], "something" ) )
         ) } "expecting to die (expire = ".( $expire || "" ).")";
 }
 
-foreach my $workload ( ( undef, [], \( "*" x ( Redis::JobQueue::Job::MAX_DATASIZE + 1 ) ) ) )
+#foreach my $workload ( ( undef, [], \( "*" x ( Redis::JobQueue::Job::MAX_DATASIZE + 1 ) ) ) )
+foreach my $workload ( ( undef, [] ) )
 {
     dies_ok { my $job = Redis::JobQueue::Job->new(
         id          => $pre_job->{id},
@@ -70,7 +71,8 @@ foreach my $workload ( ( undef, [], \( "*" x ( Redis::JobQueue::Job::MAX_DATASIZ
         ) } "expecting to die (workload = ".( substr( $workload || "", 0, 10 ) ).")";
 }
 
-foreach my $result ( ( undef, [], \( "*" x ( Redis::JobQueue::Job::MAX_DATASIZE + 1 ) ) ) )
+#foreach my $result ( ( undef, [], \( "*" x ( Redis::JobQueue::Job::MAX_DATASIZE + 1 ) ) ) )
+foreach my $result ( ( undef, [] ) )
 {
     dies_ok { my $job = Redis::JobQueue::Job->new(
         id          => $pre_job->{id},

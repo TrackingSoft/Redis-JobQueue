@@ -6,7 +6,7 @@ use bytes;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.06';
 
 #-- load the modules -----------------------------------------------------------
 
@@ -182,7 +182,7 @@ Redis::JobQueue::Job - Object interface for jobs creating and manipulating
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 0.03
+This documentation refers to C<Redis::JobQueue::Job> version 0.06
 
 =head1 SYNOPSIS
 

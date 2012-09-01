@@ -1,5 +1,21 @@
 Revision history for Redis::JobQueue package
 
+0.06  Mon Sep  13 2012
+    BUGFIXES:
+    - The 'get_next_job' method work correctly when 'blocking' is true
+
+0.05  Mon Sep  10 2012
+    CHANGES:
+    - Author and release tests moved to 'xt' directory
+
+    BUGFIXES:
+    - Eliminate unnecessary Data::UUID object construction
+
+0.04  Tue Sep  01 2012
+    BUGFIXES:
+    - t/00_Job/01_new.t
+      Disable checking leads to "Out of memory!" for systems with limited memory
+
 0.03  Tue Aug  30 2012
     CHANGES:
     - Added test 't/94_fixme.t'

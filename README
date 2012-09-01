@@ -1,4 +1,4 @@
-Redis::JobQueue package version 0.03
+Redis::JobQueue package version 0.06
 ====================================
 
 The Redis::JobQueue package is a set of Perl modules which provides a
@@ -31,13 +31,7 @@ Redis::JobQueue :
 
 The Redis::JobQueue package has the following optional dependencies:
 
-   Test::Distribution
    Test::Exception
-   Text::Fixme
-   Test::Kwalitee
-   Test::Perl::Critic
-   Test::Pod
-   Test::Pod::Coverage
    Test::RedisServer
    Test::TCP
 

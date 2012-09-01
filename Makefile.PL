@@ -18,13 +18,7 @@ my %config = (
         'Redis'                 => 1.926,
         },
     BUILD_REQUIRES              => {
-        'Test::Distribution'    => 2.00,
         'Test::Exception'       => 0.31,
-        'Test::Fixme'           => 0.07,
-        'Test::Kwalitee'        => 1.01,
-        'Test::Perl::Critic'    => 1.02,
-        'Test::Pod'             => 1.45,
-        'Test::Pod::Coverage'   => 1.08,
         'Test::RedisServer'     => 0.04,
         'Test::TCP'             => 1.17,
         },
@@ -42,5 +36,15 @@ my %config = (
 
 my @patterns = qw( t/*.t t/*/*.t );
 $config{test} = { TESTS => join ' ', map { glob } @patterns };
+
+if( $ENV{AUTHOR_TESTS} ) {
+    @patterns = qw( xt/author/*.t xt/author/*/*.t );
+    $config{test}->{TESTS} .= ' '.join ' ', map { glob } @patterns;
+}
+
+if( $ENV{RELEASE_TESTS} ) {
+    @patterns = qw( xt/release/*.t xt/release/*/*.t );
+    $config{test}->{TESTS} .= ' '.join ' ', map { glob } @patterns;
+}
 
 ExtUtils::MakeMaker::WriteMakefile( %config );
