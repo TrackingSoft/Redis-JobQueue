@@ -749,6 +749,7 @@ This example illustrates a C<new()> call with all the valid arguments:
         redis   => "$server:$port", # Default Redis local server and port
         timeout => $timeout,        # Maximum wait time (in seconds)
                                     # you receive a message from the queue
+                                    # 0 for an unlimited wait time
         );
 
 The following examples illustrate other uses of the C<new> method:
@@ -858,7 +859,8 @@ C<get_next_job> takes arguments in key-value pairs.
 You can specify a job name or a reference to an array of names of jobs.
 If the optional C<blocking> argument is true, then the C<get_next_job> method
 waits for a maximum period of time specified in the C<timeout> attribute of
-the queue object. By default, the result is returned immediately.
+the queue object. Use C<timeout> = 0 for an unlimited wait time.
+By default, the result is returned immediately.
 
 Please keep in mind that each job has a separate queue. Job identifiers will be
 selected only from the corresponding queue of jobs. The queue that
@@ -969,7 +971,8 @@ The method of access to the C<timeout> attribute.
 The method returns the current value of the attribute if called without arguments.
 
 Non-negative integer value can be used to specify a new value of the maximum
-waiting time data from the queue (in the L</get_next_job> method).
+waiting time data from the queue (in the L</get_next_job> method). Use
+C<timeout> = 0 for an unlimited wait time.
 
 =head3 C<max_datasize>
 
