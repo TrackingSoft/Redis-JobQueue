@@ -4,8 +4,8 @@ example.pl                          JobQueue client demonstration
 MANIFEST                            This file
 Makefile.PL                         Makefile generator
 README                              Get you started with this package
-lib/Redis/JobQueue.pm               Object interface for the job queues management
-lib/Redis/JobQueue/Job.pm           Object interface for the objects jobs
+lib/Redis/JobQueue.pm
+lib/Redis/JobQueue/Job.pm
 t/00_compile.t
 t/00_Job/00_compile.t
 t/00_Job/01_new.t
@@ -25,6 +25,7 @@ t/01_JobQueue/09_quit.t
 t/01_JobQueue/10_max_datasize.t
 t/01_JobQueue/11_last_errorcode.t
 t/01_JobQueue/12_timeout.t
+xt/author/93_versions.t
 xt/author/94_fixme.t
 xt/author/95_critic.t
 xt/release/96_kwalitee.t

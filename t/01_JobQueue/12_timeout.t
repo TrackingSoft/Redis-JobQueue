@@ -127,6 +127,28 @@ $job = $jq->get_next_job(
     );
 ok time - $tm == 0, "timeout ok";
 
+#-- sample
+
+new_connect();
+
+my $queue = Redis::JobQueue->new(
+    $redis,
+    timeout => 3,
+);
+
+my @job_types = qw( foo bar );
+
+say scalar localtime;
+while( my $job = $queue->get_next_job(
+    queue    => 'ts',
+    job      => \@job_types,
+    blocking => 1,
+))
+{
+    say "Got job: $job";
+}
+say scalar localtime;
+
 #-- Closes and cleans up -------------------------------------------------------
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );

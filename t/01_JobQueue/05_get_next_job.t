@@ -77,17 +77,25 @@ sleep 1;
 foreach my $blocking ( ( 0, 1 ) )
 {
     @job_names = ();
+    my @ids = ();
+    my @jbs = ();
     foreach my $name ( qw( yyy zzz ) )
     {
         push @job_names, $name;
-        @jobs = ();
+        @jbs = ();
         foreach my $job_name ( @job_names )
         {
             $pre_job->{job} = $job_name;
             $job = Redis::JobQueue::Job->new( $pre_job );
             isa_ok( $job, 'Redis::JobQueue::Job');
 
-            push( @jobs, $jq->add_job( $job ) ) for ( 0..2 );
+            for ( 0..2 )
+            {
+                my $job = $jq->add_job( $job );
+                push @jobs, $job;
+                push @ids, $job->id;
+                push @jbs, $job->job;
+            }
             isa_ok( $jobs[ $_ ], 'Redis::JobQueue::Job' ) for ( 0..2 );
         }
 
@@ -104,11 +112,35 @@ foreach my $blocking ( ( 0, 1 ) )
             {
                 if ( $field =~ /workload|result/ )
                 {
-                    is ${$new_job->$field}, ${$jobs[ $idx ]->$field}, "a valid value (".${$new_job->$field}.")";
+                    is ${$new_job->$field}, ${$jobs[ $idx ]->$field}, "a valid data (".${$new_job->$field}.")";
+                }
+                elsif ( $field eq 'id' )
+                {
+                    for ( my $i = 0; $i < $#ids; $i++ )
+                    {
+                        if ( $new_job->$field eq $ids[ $i ] )
+                        {
+                            is $new_job->$field, $ids[ $i ], "a valid $field (".$new_job->$field.")";
+                            splice @ids, $i, 1;
+                            last;
+                        }
+                    }
+                }
+                elsif ( $field eq 'job' )
+                {
+                    for ( my $i = 0; $i < $#jbs; $i++ )
+                    {
+                        if ( $new_job->$field eq $jbs[ $i ] )
+                        {
+                            is $new_job->$field, $jbs[ $i ], "a valid $field (".$new_job->$field.")";
+                            splice @jbs, $i, 1;
+                            last;
+                        }
+                    }
                 }
                 else
                 {
-                    is $new_job->$field, $jobs[ $idx ]->$field, "a valid value (".$new_job->$field.")";
+                    is $new_job->$field, $jobs[ $idx ]->$field, "a valid $field (".$new_job->$field.")";
                 }
             }
             ++$idx;
@@ -190,6 +222,40 @@ $new_job = $jq->get_next_job(
     blocking    => $blocking,
     );
 is $new_job, undef, "job identifier has already been removed";
+
+$blocking = 0;
+$pre_job->{expire} = 0;
+
+my @some_queues = qw( q1 q2 q3 );
+my @some_jobs   = qw( j1 j2 j3 );
+my @expectation = ();
+foreach my $queue ( ( @some_queues ) )
+{
+    foreach my $job ( ( @some_jobs ) )
+    {
+        $pre_job->{queue}   = $queue;
+        $pre_job->{job}     = $job;
+        $new_job = $jq->add_job( $pre_job );
+        push @expectation, "$queue $job";
+    }
+}
+
+while ( my $job = $jq->get_next_job(
+    queue       => \@some_queues,
+    job         => \@some_jobs,
+    blocking    => 0,
+    ) )
+{
+    for ( my $i = 0; $i < $#expectation; $i++ )
+    {
+        if ( $job->queue.' '.$job->job eq $expectation[ $i ] )
+        {
+            is $job->queue.' '.$job->job, $expectation[ $i ], "job OK";
+            splice @expectation, $i, 1;
+            last;
+        }
+    }
+}
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 

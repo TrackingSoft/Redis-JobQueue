@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -36,7 +36,7 @@ our @EXPORT_OK  = qw(
 use Mouse;                                      # automatically turns on strict and warnings
 use Mouse::Util::TypeConstraints;
 use Carp;
-use List::Util      qw( min );
+use List::Util      qw( min shuffle );
 use Redis;
 use Data::UUID;
 use Params::Util    qw( _STRING );
@@ -287,7 +287,7 @@ sub get_next_job {
         or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
         ;
     my %args = ( @_ );
-    my $queue       = $args{queue};
+    my $queues      = $args{queue};
     my $jobs        = $args{job};
     my $blocking    = $args{blocking};
 
@@ -296,34 +296,39 @@ sub get_next_job {
     scalar @{$jobs}
         or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
         ;
+    $queues = [ $queues ]
+        if ( !ref( $queues ) );
+    scalar @{$queues}
+        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
+        ;
 
-    foreach my $arg ( ( $queue, @{$jobs} ) )
+    foreach my $arg ( ( @{$queues}, @{$jobs} ) )
     {
         defined _STRING( $arg )
             or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
             ;
     }
 
-    my $base_name = NAMESPACE.':queue:'.$queue;
-    my @keys = map { "$base_name:$_" } @$jobs;
+    my @keys = ();
+    foreach my $queue ( ( @{$queues} ) )
+    {
+        my $base_name = NAMESPACE.':queue:'.$queue;
+        push @keys, map { "$base_name:$_" } @$jobs;
+    }
+    @keys = shuffle( @keys );
 
     if ( $blocking )
     {
-        foreach my $key ( @keys )
-        {
 # 'BLPOP' waiting time of a given $self->timeout parameter
-            my @cmd = ( 'BLPOP', $key, $self->timeout );
-            while (1)
-            {
-                my ( undef, $full_id ) = $self->_call_redis( @cmd );
+        my @cmd = ( 'BLPOP', ( @keys ), $self->timeout );
+        while (1)
+        {
+            my ( $key, $full_id ) = $self->_call_redis( @cmd );
 # if the job is no longer
-                last
-                    unless $full_id;
+            last unless $full_id;
 
-                my $job = $self->_get_next_job( $full_id );
-                return $job
-                    if $job;
-            }
+            my $job = $self->_get_next_job( $full_id );
+            return $job if $job;
         }
     }
     else
@@ -337,12 +342,10 @@ sub get_next_job {
             {
                 my $full_id = $self->_call_redis( @cmd );
 # if the job is no longer
-                last
-                    unless $full_id;
+                last unless $full_id;
 
                 my $job = $self->_get_next_job( $full_id );
-                return $job
-                    if $job;
+                return $job if $job;
             }
         }
     }
@@ -611,7 +614,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.06
+This documentation refers to C<Redis::JobQueue> version 0.07
 
 =head1 SYNOPSIS
 
@@ -856,7 +859,10 @@ The following examples illustrate uses of the C<check_job_status> method:
 Selects the first job identifier in the queue for the specified jobs.
 
 C<get_next_job> takes arguments in key-value pairs.
-You can specify a job name or a reference to an array of names of jobs.
+You can specify a queue name or a reference to an array of names of queues,
+also as you can specify a job name or a reference to an array of names of jobs.
+Job lists are queried randomly.
+
 If the optional C<blocking> argument is true, then the C<get_next_job> method
 waits for a maximum period of time specified in the C<timeout> attribute of
 the queue object. Use C<timeout> = 0 for an unlimited wait time.
@@ -879,6 +885,12 @@ These examples illustrates a C<get_next_job> call with all the valid arguments:
     # or
     $job = $jq->get_next_job(
         queue       => 'xxx',
+        job         => [ 'yyy', 'zzz' ],
+        blocking    => 1,
+        );
+    # or
+    $job = $jq->get_next_job(
+        queue       => [ 'aaa', 'bbb' ],
         job         => [ 'yyy', 'zzz' ],
         blocking    => 1,
         );

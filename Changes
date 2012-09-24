@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+0.07  Mon Sep  26 2012
+    CHANGES:
+    - The 'get_next_job' can take a queue name or a reference to an array of queue names
+
 0.06  Mon Sep  13 2012
     BUGFIXES:
     - The 'get_next_job' method work correctly when 'blocking' is true
