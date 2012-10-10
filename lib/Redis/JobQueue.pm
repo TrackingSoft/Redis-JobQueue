@@ -323,7 +323,7 @@ sub get_next_job {
         my @cmd = ( 'BLPOP', ( @keys ), $self->timeout );
         while (1)
         {
-            my ( $key, $full_id ) = $self->_call_redis( @cmd );
+            my ( undef, $full_id ) = $self->_call_redis( @cmd );
 # if the job is no longer
             last unless $full_id;
 
