@@ -113,8 +113,7 @@ note '$@: ', $@;
 
 my $tm = time;
 $job = $jq->get_next_job(
-    queue    => 'lovely_queue',
-    job      => 'foo',
+    queue    => 'not_lovely_queue',
     blocking => 1,
     );
 ok time - $tm >= $timeout, "timeout ok";
@@ -122,7 +121,6 @@ ok time - $tm >= $timeout, "timeout ok";
 $tm = time;
 $job = $jq->get_next_job(
     queue    => 'lovely_queue',
-    job      => 'foo',
     blocking => 0,
     );
 ok time - $tm == 0, "timeout ok";
@@ -141,7 +139,6 @@ my @job_types = qw( foo bar );
 say scalar localtime;
 while( my $job = $queue->get_next_job(
     queue    => 'ts',
-    job      => \@job_types,
     blocking => 1,
 ))
 {

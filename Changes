@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+0.08  Mon Dec  ?? 2012
+    CHANGES:
+    - The 'job' attribute of the job performs only informational role
+
 0.07  Mon Sep  26 2012
     CHANGES:
     - The 'get_next_job' can take a queue name or a reference to an array of queue names

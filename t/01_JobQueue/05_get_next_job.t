@@ -102,7 +102,6 @@ foreach my $blocking ( ( 0, 1 ) )
         $idx = 0;
         while ( my $new_job = $jq->get_next_job(
             queue       => $pre_job->{queue},
-            job         => scalar( @job_names ) == 1 ? $job_names[0] : \@job_names,
             blocking    => $blocking,
             ) )
         {
@@ -116,7 +115,7 @@ foreach my $blocking ( ( 0, 1 ) )
                 }
                 elsif ( $field eq 'id' )
                 {
-                    for ( my $i = 0; $i < $#ids; $i++ )
+                    for ( my $i = 0; $i <= $#ids; $i++ )
                     {
                         if ( $new_job->$field eq $ids[ $i ] )
                         {
@@ -128,7 +127,7 @@ foreach my $blocking ( ( 0, 1 ) )
                 }
                 elsif ( $field eq 'job' )
                 {
-                    for ( my $i = 0; $i < $#jbs; $i++ )
+                    for ( my $i = 0; $i <= $#jbs; $i++ )
                     {
                         if ( $new_job->$field eq $jbs[ $i ] )
                         {
@@ -163,7 +162,6 @@ isa_ok( $jobs[ $_ ], 'Redis::JobQueue::Job' ) for ( 0..2 );
 $idx = 0;
 while ( my $new_job = $jq->get_next_job(
     queue       => $pre_job->{queue},
-    job         => $name,
     ) )
 {
     isa_ok( $new_job, 'Redis::JobQueue::Job' );
@@ -182,26 +180,19 @@ while ( my $new_job = $jq->get_next_job(
     ++$idx;
 }
 
-foreach my $arg ( ( undef, "", \"scalar", [] ) )
+foreach my $arg ( ( "", \"scalar" ) )
 {
     dies_ok { $jq->get_next_job(
         queue       => $arg,
-        job         => [ $pre_job->{job} ],
         ) } "expecting to die: ".( $arg || "" );
 
     dies_ok { $jq->get_next_job(
-        queue       => $pre_job->{queue},
-        job         => $arg,
-        ) } "expecting to die: ".( $arg || "" );
-
-    dies_ok { $jq->get_next_job(
-        queue       => $pre_job->{queue},
-        job         => [ $arg ],
+        queue       => [ $arg ],
         ) } "expecting to die: ".( $arg || "" );
 }
 
 $blocking = 1;
-$pre_job->{job} = 'aaa';
+$pre_job->{queue} = 'aaa';
 $pre_job->{expire} = $timeout;
 $job = Redis::JobQueue::Job->new( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');
@@ -209,7 +200,6 @@ my $new_job = $jq->add_job( $job );
 isa_ok( $new_job, 'Redis::JobQueue::Job' );
 $new_job = $jq->get_next_job(
     queue       => $pre_job->{queue},
-    job         => $pre_job->{job},
     blocking    => $blocking,
     );
 isa_ok( $new_job, 'Redis::JobQueue::Job' );
@@ -218,7 +208,6 @@ isa_ok( $new_job, 'Redis::JobQueue::Job' );
 sleep $timeout * 2;
 $new_job = $jq->get_next_job(
     queue       => $pre_job->{queue},
-    job         => $pre_job->{job},
     blocking    => $blocking,
     );
 is $new_job, undef, "job identifier has already been removed";
@@ -242,11 +231,10 @@ foreach my $queue ( ( @some_queues ) )
 
 while ( my $job = $jq->get_next_job(
     queue       => \@some_queues,
-    job         => \@some_jobs,
     blocking    => 0,
     ) )
 {
-    for ( my $i = 0; $i < $#expectation; $i++ )
+    for ( my $i = 0; $i <= $#expectation; $i++ )
     {
         if ( $job->queue.' '.$job->job eq $expectation[ $i ] )
         {
@@ -254,6 +242,24 @@ while ( my $job = $jq->get_next_job(
             splice @expectation, $i, 1;
             last;
         }
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+@some_queues = qw( q1 q2 q3 );
+@some_jobs   = qw( j1 j2 j3 );
+@expectation = ();
+my @combinations = ();
+foreach my $queue ( ( @some_queues ) )
+{
+    foreach my $job ( ( @some_jobs ) )
+    {
+        $pre_job->{queue}   = $queue;
+        $pre_job->{job}     = $job;
+        $new_job = $jq->add_job( $pre_job );
+        push @expectation, "[$queue $job]";
+        push @combinations, [ $queue, $job ];
     }
 }
 

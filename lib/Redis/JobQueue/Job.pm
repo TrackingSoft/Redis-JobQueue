@@ -6,7 +6,7 @@ use bytes;
 use strict;
 use warnings;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 #-- load the modules -----------------------------------------------------------
 
@@ -80,15 +80,19 @@ has 'id'            => (
     trigger     => sub { $_[0]->_variability_set( 'id' ) },
     );
 
-for my $name ( qw( queue job ) )
-{
-    has $name         => (
-        is          => 'rw',
-        isa         => 'Maybe[Str]',
-        required    => 1,
-        trigger     => sub { $_[0]->_variability_set( $name ) },
-        );
-}
+has 'queue'         => (
+    is          => 'rw',
+    isa         => 'Maybe[Str]',
+    required    => 1,
+    trigger     => sub { $_[0]->_variability_set( 'queue' ) },
+    );
+
+has 'job'           => (
+    is          => 'rw',
+    isa         => 'Maybe[Str]',
+    default     => '',
+    trigger     => sub { $_[0]->_variability_set( 'job' ) },
+    );
 
 has 'status'        => (
     is          => 'rw',
@@ -182,7 +186,7 @@ Redis::JobQueue::Job - Object interface for jobs creating and manipulating
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 0.07
+This documentation refers to C<Redis::JobQueue::Job> version 0.08
 
 =head1 SYNOPSIS
 
@@ -280,7 +284,7 @@ This example illustrates a C<new()> call with all the valid arguments:
         queue       => 'lovely_queue',  # The name of the job queue.
                                         # (required)
         job         => 'strong_job',    # The name of the job.
-                                        # (required)
+                                        # (optional attribute)
         expire      => 12*60*60,        # Job's time to live in seconds.
                                         # 0 for no expire time.
                                         # (required)

@@ -123,24 +123,24 @@ $job = $jq->add_job(
     );
 
 ok $ret = $jq->_call_redis( 'EXISTS', Redis::JobQueue::NAMESPACE.":".$job->id ), "key exists: $ret";
-ok $ret = $jq->_call_redis( 'EXISTS', Redis::JobQueue::NAMESPACE.":queue:".$job->queue.":".$job->job ), "key exists: $ret";
+ok $ret = $jq->_call_redis( 'EXISTS', Redis::JobQueue::NAMESPACE.":queue:".$job->queue ), "key exists: $ret";
 
-$job->job( "zzz" );
+$job->queue( "zzz" );
 
-$jq->_call_redis( 'DEL', Redis::JobQueue::NAMESPACE.":queue:".$job->queue.":".$job->job );
+$jq->_call_redis( 'DEL', Redis::JobQueue::NAMESPACE.":queue:".$job->queue );
 
 $job2 = $jq->add_job(
     $job,
     );
 
 ok $ret = $jq->_call_redis( 'EXISTS', Redis::JobQueue::NAMESPACE.":".$job2->id ), "key exists: $ret";
-ok $ret = $jq->_call_redis( 'EXISTS', Redis::JobQueue::NAMESPACE.":queue:".$job2->queue.":".$job2->job ), "key exists: $ret";
+ok $ret = $jq->_call_redis( 'EXISTS', Redis::JobQueue::NAMESPACE.":queue:".$job2->queue ), "key exists: $ret";
 
 $job3 = $jq->add_job(
     $job2,
     );
 
-is scalar ( @arr = $jq->_call_redis( 'LRANGE', Redis::JobQueue::NAMESPACE.":queue:".$job2->queue.":".$job2->job, 0, -1 ) ), 2, "queue exists: @arr";
+is scalar ( @arr = $jq->_call_redis( 'LRANGE', Redis::JobQueue::NAMESPACE.":queue:".$job2->queue, 0, -1 ) ), 2, "queue exists: @arr";
 is scalar ( @arr = $jq->_call_redis( 'HGETALL', Redis::JobQueue::NAMESPACE.":".$job2->id ) ), ( scalar keys %{$pre_job} ) * 2, "right hash";
 
 foreach my $field ( keys %{$pre_job} )

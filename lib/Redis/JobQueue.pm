@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -39,7 +39,7 @@ use Carp;
 use List::Util      qw( min shuffle );
 use Redis;
 use Data::UUID;
-use Params::Util    qw( _STRING );
+use Params::Util    qw( _STRING _ARRAY0 );
 use Redis::JobQueue::Job;
 
 #-- declarations ---------------------------------------------------------------
@@ -225,7 +225,7 @@ sub add_job {
     $self->_call_redis( 'EXPIRE', $key, $expire )
         if $expire;
 
-    $key = NAMESPACE.':queue:'.$job->queue.':'.$job->job;
+    $key = NAMESPACE.':queue:'.$job->queue;
 # Warning: change '$id'
     $id .= ' '.( time + $expire )
         if $expire;
@@ -288,21 +288,12 @@ sub get_next_job {
         ;
     my %args = ( @_ );
     my $queues      = $args{queue};
-    my $jobs        = $args{job};
     my $blocking    = $args{blocking};
 
-    $jobs = [ $jobs ]
-        if ( !ref( $jobs ) );
-    scalar @{$jobs}
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
-        ;
-    $queues = [ $queues ]
+    $queues = [ $queues // () ]
         if ( !ref( $queues ) );
-    scalar @{$queues}
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
-        ;
 
-    foreach my $arg ( ( @{$queues}, @{$jobs} ) )
+    foreach my $arg ( ( @{$queues} ) )
     {
         defined _STRING( $arg )
             or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
@@ -310,42 +301,43 @@ sub get_next_job {
     }
 
     my @keys = ();
-    foreach my $queue ( ( @{$queues} ) )
-    {
-        my $base_name = NAMESPACE.':queue:'.$queue;
-        push @keys, map { "$base_name:$_" } @$jobs;
-    }
-    @keys = shuffle( @keys );
+    my $base_name = NAMESPACE.':queue';
+    push @keys, map { "$base_name:$_" } @$queues;
 
-    if ( $blocking )
+    if ( @keys )
     {
+        @keys = shuffle( @keys );
+
+        if ( $blocking )
+        {
 # 'BLPOP' waiting time of a given $self->timeout parameter
-        my @cmd = ( 'BLPOP', ( @keys ), $self->timeout );
-        while (1)
-        {
-            my ( undef, $full_id ) = $self->_call_redis( @cmd );
-# if the job is no longer
-            last unless $full_id;
-
-            my $job = $self->_get_next_job( $full_id );
-            return $job if $job;
-        }
-    }
-    else
-    {
-# 'LPOP' takes only one queue name at ones
-        foreach my $key ( @keys )
-        {
-            next unless $self->_call_redis( 'EXISTS', $key );
-            my @cmd = ( 'LPOP', $key );
+            my @cmd = ( 'BLPOP', ( @keys ), $self->timeout );
             while (1)
             {
-                my $full_id = $self->_call_redis( @cmd );
+                my ( undef, $full_id ) = $self->_call_redis( @cmd );
 # if the job is no longer
                 last unless $full_id;
 
                 my $job = $self->_get_next_job( $full_id );
                 return $job if $job;
+            }
+        }
+        else
+        {
+# 'LPOP' takes only one queue name at ones
+            foreach my $key ( @keys )
+            {
+                next unless $self->_call_redis( 'EXISTS', $key );
+                my @cmd = ( 'LPOP', $key );
+                while (1)
+                {
+                    my $full_id = $self->_call_redis( @cmd );
+# if the job is no longer
+                    last unless $full_id;
+
+                    my $job = $self->_get_next_job( $full_id );
+                    return $job if $job;
+                }
             }
         }
     }
@@ -562,6 +554,7 @@ sub _call_redis {
 
     my @return;
     $self->_set_last_errorcode( ENOERROR );
+
     @return = eval {
                 return $self->_redis->$method( map { ref( $_ )  ? $$_
                                                                 : $_
@@ -614,7 +607,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.07
+This documentation refers to C<Redis::JobQueue> version 0.08
 
 =head1 SYNOPSIS
 
@@ -628,25 +621,23 @@ This documentation refers to C<Redis::JobQueue> version 0.07
     my $job = $jq->add_job(
         {
             queue       => 'xxx',
-            job         => 'yyy',
             workload    => \'Some stuff up to 512MB long',
             expire      => 12*60*60,            # 12h,
         }
         );
 
     #-- Worker
-    sub yyy {
+    sub xxx {
         my $job = shift;
 
         my $workload = ${$job->workload};
         # do something with workload;
 
-        $job->result( 'YYY JOB result comes here, up to 512MB long' );
+        $job->result( 'XXX JOB result comes here, up to 512MB long' );
     }
 
     while ( $job = $jq->get_next_job(
         queue       => 'xxx',
-        job         => 'yyy',
         blocking    => 1,
         ) )
     {
@@ -654,10 +645,7 @@ This documentation refers to C<Redis::JobQueue> version 0.07
         $jq->update_job( $job );
 
         # do my stuff
-        if ( $job->job eq 'yyy' )
-        {
-            yyy( $job );
-        }
+        xxx( $job );
 
         $job->status( 'completed' );
         $jq->update_job( $job );
@@ -791,8 +779,8 @@ This example illustrates a C<add_job()> call with all the valid arguments:
 
     my $pre_job = {
         id           => '4BE19672-C503-11E1-BF34-28791473A258',
-        queue        => 'lovely_queue',
-        job          => 'strong_job',
+        queue        => 'lovely_queue', # required
+        job          => 'strong_job',   # optional attribute
         expire       => 12*60*60,
         status       => 'created',
         workload     => \'Some stuff up to 512MB long',
@@ -801,8 +789,8 @@ This example illustrates a C<add_job()> call with all the valid arguments:
 
     my $job = Redis::JobQueue::Job->new(
         id           => $pre_job->{id},
-        queue        => $pre_job->{queue},
-        job          => $pre_job->{job},
+        queue        => $pre_job->{queue},  # required
+        job          => $pre_job->{job},    # optional attribute
         expire       => $pre_job->{expire},
         status       => $pre_job->{status},
         workload     => $pre_job->{workload},
@@ -854,23 +842,22 @@ The following examples illustrate uses of the C<check_job_status> method:
     # or
     $job = $jq->load_job( $job );
 
-=head3 C<get_next_job( queue =E<gt> $queue_name, job =E<gt> $job, blocking =E<gt> 1 )>
+=head3 C<get_next_job( queue =E<gt> $queue_name, $blocking =E<gt> 1 )>
 
-Selects the first job identifier in the queue for the specified jobs.
+Selects the first job identifier in the queue.
 
 C<get_next_job> takes arguments in key-value pairs.
-You can specify a queue name or a reference to an array of names of queues,
-also as you can specify a job name or a reference to an array of names of jobs.
-Job lists are queried randomly.
+You can specify a queue name or a reference to an array of names of queues.
+Queues from the list are processed in random order.
 
 If the optional C<blocking> argument is true, then the C<get_next_job> method
 waits for a maximum period of time specified in the C<timeout> attribute of
 the queue object. Use C<timeout> = 0 for an unlimited wait time.
 By default, the result is returned immediately.
-
-Please keep in mind that each job has a separate queue. Job identifiers will be
-selected only from the corresponding queue of jobs. The queue that
-corresponds to the order of jobs is set in the C<job> argument.
+If the optional C<blocking> argument is true, then all queues are processed in
+a single request to Redis server; otherwise, each queue is processed in
+a separate request.
+Default - C<blocking> is false (0).
 
 Method returns the job object corresponding to the received job identifier.
 Returns the C<undef> if there is no job in the queue.
@@ -879,19 +866,11 @@ These examples illustrates a C<get_next_job> call with all the valid arguments:
 
     $job = $jq->get_next_job(
         queue       => 'xxx',
-        job         => 'yyy',
-        blocking    => 1,
-        );
-    # or
-    $job = $jq->get_next_job(
-        queue       => 'xxx',
-        job         => [ 'yyy', 'zzz' ],
         blocking    => 1,
         );
     # or
     $job = $jq->get_next_job(
         queue       => [ 'aaa', 'bbb' ],
-        job         => [ 'yyy', 'zzz' ],
         blocking    => 1,
         );
 
@@ -1235,7 +1214,17 @@ The example shows a possible treatment for possible errors.
         $job = $jq->add_job(
             {
                 queue       => 'xxx',
-                job         => 'yyy',
+                workload    => \'Some stuff up to 512MB long',
+                expire      => 12*60*60,
+            } );
+    };
+    exception( $jq, $@ ) if $@;
+    print 'Added job ', $job->id, "\n" if $job;
+
+    eval {
+        $job = $jq->add_job(
+            {
+                queue       => 'yyy',
                 workload    => \'Some stuff up to 512MB long',
                 expire      => 12*60*60,
             } );
@@ -1246,6 +1235,16 @@ The example shows a possible treatment for possible errors.
     #-- Worker ---------------------------------------------------------------
     #-- Run your jobs
 
+    sub xxx {
+        my $job = shift;
+
+        my $workload = ${$job->workload};
+        # do something with workload;
+        print "XXX workload: $workload\n";
+
+        $job->result( 'XXX JOB result comes here, up to 512MB long' );
+    }
+
     sub yyy {
         my $job = shift;
 
@@ -1253,23 +1252,12 @@ The example shows a possible treatment for possible errors.
         # do something with workload;
         print "YYY workload: $workload\n";
 
-        $job->result( 'YYY JOB result comes here, up to 512MB long' );
-    }
-
-    sub zzz {
-        my $job = shift;
-
-        my $workload = ${$job->workload};
-        # do something with workload;
-        print "ZZZ workload: $workload\n";
-
-        $job->result( \'ZZZ JOB result comes here, up to 512MB long' );
+        $job->result( \'YYY JOB result comes here, up to 512MB long' );
     }
 
     eval {
         while ( my $job = $jq->get_next_job(
-            queue       => 'xxx',
-            job         => [ 'yyy','zzz' ],
+            queue       => [ 'xxx','yyy' ],
             blocking    => 1,
             ) )
         {
@@ -1285,13 +1273,13 @@ The example shows a possible treatment for possible errors.
             print "Job '", $id, "' has new '$status' status\n";
 
             # do my stuff
-            if ( $job->job eq 'yyy' )
+            if ( $job->queue eq 'xxx' )
+            {
+                xxx( $job );
+            }
+            elsif ( $job->queue eq 'yyy' )
             {
                 yyy( $job );
-            }
-            elsif ( $job->job eq 'zzz' )
-            {
-                zzz( $job );
             }
 
             $job->status( STATUS_COMPLETED );
@@ -1379,7 +1367,7 @@ For example:
     1) "queue"                                  # hash key
     2) "xxx"                                    # the key value
     3) "job"                                    # hash key
-    4) "yyy"                                    # the key value
+    4) "Some description"                       # the key value
     5) "workload"                               # hash key
     6) "Some stuff up to 512MB long"            # the key value
     7) "expire"                                 # hash key
@@ -1401,25 +1389,22 @@ Hash of the job data is deleted when you delete the job (L</delete_job> method).
 
 For example:
 
-    redis 127.0.0.1:6379> KEYS JobQueue:*
+    redis 127.0.0.1:6379> KEYS JobQueue:queue:*
     ...
-    4) "JobQueue:queue:xxx:yyy"
-    5) "JobQueue:queue:xxx:zzz"
-    #      |       |    |   |
-    #   Namespace  |    |   |
-    #    Fixed key word |   |
-    #            Queue name |
-    #                   Job name
+    4) "JobQueue:queue:xxx"
+    5) "JobQueue:queue:yyy"
+    #      |       |    |
+    #   Namespace  |    |
+    #    Fixed key word |
+    #            Queue name
     ...
-    redis 127.0.0.1:6379> LRANGE JobQueue:queue:xxx:yyy 0 -1
+    redis 127.0.0.1:6379> LRANGE JobQueue:queue:xxx 0 -1
     1) "478B9C84-C5B8-11E1-A2C5-D35E0A986783 1344070066"
     2) "89116152-C5BD-11E1-931B-0A690A986783 1344070067"
     #                        |                   |
     #                     Job id (UUID)          |
     #                                      Expire time (UTC)
     ...
-
-Please keep in mind that each job has a separate queue.
 
 Job queue will be created automatically when the data arrives to contain.
 Job queue will be deleted automatically in the exhaustion of its contents.

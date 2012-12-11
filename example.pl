@@ -98,7 +98,19 @@ eval {
     $job = $jq->add_job(
         {
             queue       => 'xxx',
-            job         => 'yyy',
+            job         => 'Some comment',
+            workload    => \'Some stuff up to 512MB long',
+            expire      => 12*60*60,
+        } );
+};
+exception( $jq, $@ ) if $@;
+print "Added job ", $job->id, "\n" if $job;
+
+eval {
+    $job = $jq->add_job(
+        {
+            queue       => 'yyy',
+            job         => 'Some comment',
             workload    => \'Some stuff up to 512MB long',
             expire      => 12*60*60,
         } );
@@ -110,6 +122,16 @@ print "Added job ", $job->id, "\n" if $job;
 
 #-- Run your jobs
 
+sub xxx {
+    my $job = shift;
+
+    my $workload = ${$job->workload};
+    # do something with workload;
+    print "XXX workload: $workload\n";
+
+    $job->result( 'XXX JOB result comes here, up to 512MB long' );
+}
+
 sub yyy {
     my $job = shift;
 
@@ -117,23 +139,12 @@ sub yyy {
     # do something with workload;
     print "YYY workload: $workload\n";
 
-    $job->result( 'YYY JOB result comes here, up to 512MB long' );
-}
-
-sub zzz {
-    my $job = shift;
-
-    my $workload = ${$job->workload};
-    # do something with workload;
-    print "ZZZ workload: $workload\n";
-
-    $job->result( \'ZZZ JOB result comes here, up to 512MB long' );
+    $job->result( \'YYY JOB result comes here, up to 512MB long' );
 }
 
 eval {
     while ( my $job = $jq->get_next_job(
-        queue       => 'xxx',
-        job         => [ 'yyy','zzz' ],
+        queue       => [ 'xxx','yyy' ],
         blocking    => 1
         ) )
     {
@@ -149,13 +160,13 @@ eval {
         print "Job '", $id, "' has new '$status' status\n";
 
         # do my stuff
-        if ( $job->job eq 'yyy' )
+        if ( $job->queue eq 'xxx' )
+        {
+            xxx( $job );
+        }
+        elsif ( $job->queue eq 'yyy' )
         {
             yyy( $job );
-        }
-        elsif ( $job->job eq 'zzz' )
-        {
-            zzz( $job );
         }
 
         $job->status( STATUS_COMPLETED );

@@ -199,7 +199,6 @@ SKIP:
         eval {
             while ( my $job = $jq->get_next_job(
                 queue       => $pre_job->{queue},
-                job         => $pre_job->{job},
                 blocking    => 1
                 ) )
             {
@@ -243,7 +242,6 @@ SKIP:
     eval {
         while ( my $job = $jq->get_next_job(
             queue       => $pre_job->{queue},
-            job         => $pre_job->{job},
             blocking    => 0
             ) )
         {
@@ -263,7 +261,6 @@ SKIP:
     eval {
         while ( my $job = $jq->get_next_job(
             queue       => $pre_job->{queue},
-            job         => $pre_job->{job},
             blocking    => 0
             ) )
         {
