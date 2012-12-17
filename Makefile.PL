@@ -10,6 +10,7 @@ use ExtUtils::MakeMaker qw( prompt );
 my %config = (
     NAME                        => 'Redis::JobQueue',
     VERSION_FROM                => 'lib/Redis/JobQueue.pm',
+    MIN_PERL_VERSION            => '5.010',
 # more to the list $Module::CoreList::version{5.010}
     PREREQ_PM                   => {
         'Data::UUID'            => 1.217,
