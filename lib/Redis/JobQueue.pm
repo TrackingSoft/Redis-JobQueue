@@ -737,10 +737,10 @@ C<new> optionally takes arguments. These arguments are in key-value pairs.
 This example illustrates a C<new()> call with all the valid arguments:
 
     my $jq = Redis::JobQueue->new(
-        redis   => "$server:$port", # Default Redis local server and port
-        timeout => $timeout,        # Maximum wait time (in seconds)
-                                    # you receive a message from the queue
-                                    # 0 for an unlimited wait time
+        redis   => "$server:$port", # Connection info for Redis which hosts queue
+        timeout => $timeout,        # Default wait time (in seconds)
+                                    # for blocking call of get_next_job.
+                                    # Set 0 for unlimited wait time
         );
 
 The following examples illustrate other uses of the C<new> method:
