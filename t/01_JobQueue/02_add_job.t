@@ -21,7 +21,7 @@ BEGIN {
 
 BEGIN {
     eval "use Test::TCP";
-    plan skip_all => "because Test::RedisServer required for testing" if $@;
+    plan skip_all => "because Test::TCP required for testing" if $@;
 }
 
 use Redis::JobQueue qw(

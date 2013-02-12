@@ -6,7 +6,7 @@ use bytes;
 use strict;
 use warnings;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 #-- load the modules -----------------------------------------------------------
 
@@ -186,7 +186,7 @@ Redis::JobQueue::Job - Object interface for jobs creating and manipulating
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 0.08
+This documentation refers to C<Redis::JobQueue::Job> version 0.09
 
 =head1 SYNOPSIS
 
@@ -410,7 +410,7 @@ Vlad Marchenko
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012 by TrackingSoft LLC.
+Copyright (C) 2012-2013 by TrackingSoft LLC.
 All rights reserved.
 
 This package is free software; you can redistribute it and/or modify it under

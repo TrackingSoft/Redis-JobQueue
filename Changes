@@ -1,15 +1,19 @@
 Revision history for Redis::JobQueue package
 
-0.08  Mon Dec  18 2012
+0.09  Wed Feb  13 2013
+    CHANGES:
+    - 'new' indirectly detects no connection to the Redis server
+
+0.08  Tue Dec  18 2012
     CHANGES:
     - The 'job' attribute of the job performs only informational role
     - Checking Perl version in Makefile.PL
 
-0.07  Mon Sep  26 2012
+0.07  Wed Sep  26 2012
     CHANGES:
     - The 'get_next_job' can take a queue name or a reference to an array of queue names
 
-0.06  Mon Sep  13 2012
+0.06  Thu Sep  13 2012
     BUGFIXES:
     - The 'get_next_job' method work correctly when 'blocking' is true
 
@@ -20,12 +24,12 @@ Revision history for Redis::JobQueue package
     BUGFIXES:
     - Eliminate unnecessary Data::UUID object construction
 
-0.04  Tue Sep  01 2012
+0.04  Sat Sep  01 2012
     BUGFIXES:
     - t/00_Job/01_new.t
       Disable checking leads to "Out of memory!" for systems with limited memory
 
-0.03  Tue Aug  30 2012
+0.03  Thu Aug  30 2012
     CHANGES:
     - Added test 't/94_fixme.t'
 
@@ -36,5 +40,5 @@ Revision history for Redis::JobQueue package
     BUGFIXES:
     - Minor changes in documentation
 
-0.01  Tue Aug  27 2012
+0.01  Mon Aug  27 2012
     - Original version

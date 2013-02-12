@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -39,7 +39,7 @@ use Carp;
 use List::Util      qw( min shuffle );
 use Redis;
 use Data::UUID;
-use Params::Util    qw( _STRING _ARRAY0 );
+use Params::Util    qw( _NONNEGINT _STRING _ARRAY0 );
 use Redis::JobQueue::Job;
 
 #-- declarations ---------------------------------------------------------------
@@ -71,7 +71,7 @@ my %ERROR = (
 #    ENOERROR            => 'No error',
     EMISMATCHARG        => 'Mismatch argument',
     EDATATOOLARGE       => 'Data is too large',
-#    ENETWORK            => 'Error in connection to Redis server',
+    ENETWORK            => 'Error in connection to Redis server',
 #    EMAXMEMORYLIMIT     => "Command not allowed when used memory > 'maxmemory'",
     EMAXMEMORYPOLICY    => 'job was removed by maxmemory-policy',
     EJOBDELETED         => 'job was removed prior to use',
@@ -133,6 +133,12 @@ sub BUILD {
     $self->_redis( $self->_redis_constructor )
         unless ( $self->_redis );
     my ( undef, $max_datasize ) = $self->_call_redis( 'CONFIG', 'GET', 'maxmemory' );
+    unless ( defined( _NONNEGINT( $max_datasize ) ) )
+    {
+        $self->_set_last_errorcode( ENETWORK );
+        die $ERROR{ENETWORK};
+    }
+    defined( _NONNEGINT( $max_datasize ) ) or die $ERROR{ENETWORK};
     $self->max_datasize( min $max_datasize, $self->max_datasize )
         if $max_datasize;
 }
@@ -607,7 +613,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.08
+This documentation refers to C<Redis::JobQueue> version 0.09
 
 =head1 SYNOPSIS
 
@@ -1483,7 +1489,7 @@ Vlad Marchenko
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012 by TrackingSoft LLC.
+Copyright (C) 2012-2013 by TrackingSoft LLC.
 All rights reserved.
 
 This package is free software; you can redistribute it and/or modify it under
