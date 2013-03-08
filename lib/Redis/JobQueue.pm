@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.09';
+our $VERSION = '0.11';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -67,15 +67,15 @@ use constant {
     EREDIS              => 7,
     };
 
-my %ERROR = (
-#    ENOERROR            => 'No error',
-    EMISMATCHARG        => 'Mismatch argument',
-    EDATATOOLARGE       => 'Data is too large',
-    ENETWORK            => 'Error in connection to Redis server',
-#    EMAXMEMORYLIMIT     => "Command not allowed when used memory > 'maxmemory'",
-    EMAXMEMORYPOLICY    => 'job was removed by maxmemory-policy',
-    EJOBDELETED         => 'job was removed prior to use',
-#    EREDIS              => 'Redis error message',
+our @ERROR = (
+    'No error',
+    'Mismatch argument',
+    'Data is too large',
+    'Error in connection to Redis server',
+    "Command not allowed when used memory > 'maxmemory'",
+    'job was removed by maxmemory-policy',
+    'job was removed prior to use',
+    'Redis error message',
     );
 
 my @job_fields = Redis::JobQueue::Job->job_attributes;
@@ -136,9 +136,9 @@ sub BUILD {
     unless ( defined( _NONNEGINT( $max_datasize ) ) )
     {
         $self->_set_last_errorcode( ENETWORK );
-        die $ERROR{ENETWORK};
+        die $ERROR[ ENETWORK ];
     }
-    defined( _NONNEGINT( $max_datasize ) ) or die $ERROR{ENETWORK};
+    defined( _NONNEGINT( $max_datasize ) ) or die $ERROR[ ENETWORK ];
     $self->max_datasize( min $max_datasize, $self->max_datasize )
         if $max_datasize;
 }
@@ -199,7 +199,7 @@ sub add_job {
     $self->_set_last_errorcode( ENOERROR );
     ref( $_[0] ) eq 'HASH'
         or eval { $_[0]->isa( 'Redis::JobQueue::Job' ) }
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
+        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
         ;
     my $job = Redis::JobQueue::Job->new( shift );
 
@@ -219,22 +219,18 @@ sub add_job {
     $job->id( $id );
     $job->status( STATUS_CREATED );
 
-# transaction start
     my $key = NAMESPACE.':'.$id;
     my $expire = $job->expire;
+
+# transaction start
     $self->_call_redis( 'MULTI' );
-    foreach my $field ( @job_fields )
-    {
-        $self->_call_redis( 'HSET', $key, $field, $job->$field // '' )
-            if $job->$field ne 'id';
-    }
-    $self->_call_redis( 'EXPIRE', $key, $expire )
-        if $expire;
+
+    $self->_call_redis( 'HSET', $key, $_, $job->$_ // '' ) for @job_fields;
+    $self->_call_redis( 'EXPIRE', $key, $expire ) if $expire;
 
     $key = NAMESPACE.':queue:'.$job->queue;
 # Warning: change '$id'
-    $id .= ' '.( time + $expire )
-        if $expire;
+    $id .= ' '.( time + $expire ) if $expire;
     $self->_call_redis( $to_left ? 'LPUSH' : 'RPUSH', $key, $id );
 
 # transaction end
@@ -250,7 +246,7 @@ sub check_job_status {
 
     defined( _STRING( $arg ) )
         or eval { $arg->isa( 'Redis::JobQueue::Job' ) }
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
+        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
         ;
 
     my $key = NAMESPACE.':'.( ref( $arg )   ? $arg->id
@@ -264,7 +260,7 @@ sub load_job {
 
     defined( _STRING( $arg ) )
         or eval { $arg->isa( 'Redis::JobQueue::Job' ) }
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
+        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
         ;
 
     my $id = ref( $arg )    ? $arg->id
@@ -290,7 +286,7 @@ sub get_next_job {
     my $self        = shift;
 
     !( scalar( @_ ) % 2 )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
+        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
         ;
     my %args = ( @_ );
     my $queues      = $args{queue};
@@ -302,7 +298,7 @@ sub get_next_job {
     foreach my $arg ( ( @{$queues} ) )
     {
         defined _STRING( $arg )
-            or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
+            or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
             ;
     }
 
@@ -362,7 +358,7 @@ sub _get_next_job {
         if ( $status eq STATUS_DELETED )
         {
             $self->_set_last_errorcode( EJOBDELETED );
-            confess $id.' '.$ERROR{EJOBDELETED};
+            confess $id.' '.$ERROR[ EJOBDELETED ];
         }
         return $self->_reexpire_load_job( $id );
     }
@@ -373,7 +369,7 @@ sub _get_next_job {
             )
         {
             $self->_set_last_errorcode( EMAXMEMORYPOLICY );
-            confess $id.' '.$ERROR{EMAXMEMORYPOLICY};
+            confess $id.' '.$ERROR[ EMAXMEMORYPOLICY ];
         }
 # If the queue contains the job identifier has already been removed due
 # to expiration of the 'expire' time, the cycle will ensure the transition
@@ -387,7 +383,7 @@ sub update_job {
     my $job         = shift;
 
     eval { $job->isa( 'Redis::JobQueue::Job' ) }
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
+        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
         ;
 
     my $id = $job->id;
@@ -399,7 +395,7 @@ sub update_job {
     if ( $status eq STATUS_DELETED )
     {
         $self->_set_last_errorcode( EJOBDELETED );
-        confess $id.' '.$ERROR{EJOBDELETED};
+        confess $id.' '.$ERROR[ EJOBDELETED ];
     }
 
     if ( my $expire = $job->expire )
@@ -435,7 +431,7 @@ sub delete_job {
 
     defined( _STRING( $arg ) )
         or eval { $arg->isa( 'Redis::JobQueue::Job' ) }
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR{EMISMATCHARG} )
+        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
         ;
 
     my $key = NAMESPACE.':'.( ref( $arg ) ? $arg->id : $arg );
@@ -466,6 +462,17 @@ sub get_jobs {
 #    my $re = '^'.NAMESPACE.':([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$';
     my $re = '^'.NAMESPACE.':([^:]+)$';
     return map { /$re/ } $self->_call_redis( 'KEYS', $key );
+}
+
+sub ping {
+    my $self        = shift;
+
+    $self->_set_last_errorcode( ENOERROR );
+
+    my $ret = eval { $self->_redis->ping };
+    $self->_redis_exception( $@ )
+        if $@;
+    return( ( $ret // '<undef>' ) eq 'PONG' ? 1 : 0 );
 }
 
 sub quit {
@@ -555,7 +562,7 @@ sub _call_redis {
         }
         $self->_set_last_errorcode( EDATATOOLARGE );
 # 'die' as maybe too long to analyze the data output from the 'confess'
-        die $ERROR{EDATATOOLARGE}.': '.$_[1];
+        die $ERROR[ EDATATOOLARGE ].': '.$_[1];
     }
 
     my @return;
@@ -613,7 +620,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.09
+This documentation refers to C<Redis::JobQueue> version 0.11
 
 =head1 SYNOPSIS
 
@@ -952,6 +959,16 @@ Gets a list of job ids on the Redis server.
 The following examples illustrate uses of the C<get_jobs> method:
 
     @jobs = $jq->get_jobs;
+
+=head3 C<ping>
+
+This command is used to test if a connection is still alive.
+
+Returns 1 if a connection is still alive or 0 otherwise.
+
+The following examples illustrate uses of the C<ping> method:
+
+    $is_alive = $jq->ping;
 
 =head3 C<quit>
 

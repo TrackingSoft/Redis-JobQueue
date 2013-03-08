@@ -1,5 +1,14 @@
 Revision history for Redis::JobQueue package
 
+0.11  Fri Mar  08 2013
+    CHANGES:
+    - Added method 'ping'
+
+0.10  Mon Feb  26 2013
+    CHANGES:
+    - Error codes returned by last_errorcode method complies with an array
+      of descriptions @Redis::JobQueue::ERROR
+
 0.09  Wed Feb  13 2013
     CHANGES:
     - 'new' indirectly detects no connection to the Redis server

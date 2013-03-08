@@ -85,6 +85,18 @@ ok $jq->_redis->ping, "server is available";
 $jq->quit;
 ok !$jq->_redis->ping, "no server";
 
+#-- ping
+
+$jq = Redis::JobQueue->new(
+    $redis,
+    timeout => $timeout,
+    );
+isa_ok( $jq, 'Redis::JobQueue');
+
+ok $jq->ping, "server is available";
+$jq->quit;
+ok !$jq->ping, "no server";
+
 };
 
 exit;
