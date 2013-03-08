@@ -19,9 +19,9 @@ my %config = (
         'Redis'                 => 1.926,
         },
     BUILD_REQUIRES              => {
+        'Net::EmptyPort'        => 0,
         'Test::Exception'       => 0.31,
         'Test::RedisServer'     => 0.04,
-        'Test::TCP'             => 1.17,
         },
     ( $] >= 5.005 ?
         (

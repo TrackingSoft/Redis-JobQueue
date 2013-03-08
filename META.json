@@ -22,9 +22,9 @@
    "prereqs" : {
       "build" : {
          "requires" : {
+            "Net::EmptyPort" : "0",
             "Test::Exception" : "0.31",
-            "Test::RedisServer" : "0.04",
-            "Test::TCP" : "1.17"
+            "Test::RedisServer" : "0.04"
          }
       },
       "configure" : {
@@ -43,5 +43,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.11"
+   "version" : "0.12"
 }

@@ -1,10 +1,10 @@
-Redis::JobQueue package version 0.11
+Redis::JobQueue package version 0.12
 ====================================
 
 The Redis::JobQueue package is a set of Perl modules which provides a
 simple job queue with Redis server capabilities.
 
-The Redis::JobQueue package was written, tested, and found working on 
+The Redis::JobQueue package was written, tested, and found working on
 recent Linux distributions.
 
 INSTALLATION
@@ -31,9 +31,9 @@ Redis::JobQueue :
 
 The Redis::JobQueue package has the following optional dependencies:
 
+   Net::EmptyPort
    Test::Exception
    Test::RedisServer
-   Test::TCP
 
 If the optional modules are missing, some "prereq" tests are skipped.
 

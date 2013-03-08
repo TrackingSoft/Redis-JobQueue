@@ -10,18 +10,18 @@ use Test::More;
 plan "no_plan";
 
 BEGIN {
-    eval "use Test::Exception";
+    eval "use Test::Exception";                 ## no critic
     plan skip_all => "because Test::Exception required for testing" if $@;
 }
 
 BEGIN {
-    eval "use Test::RedisServer";
+    eval "use Test::RedisServer";               ## no critic
     plan skip_all => "because Test::RedisServer required for testing" if $@;
 }
 
 BEGIN {
-    eval "use Test::TCP";
-    plan skip_all => "because Test::TCP required for testing" if $@;
+    eval "use Net::EmptyPort";                  ## no critic
+    plan skip_all => "because Net::EmptyPort required for testing" if $@;
 }
 
 use Redis::JobQueue qw(
@@ -36,13 +36,28 @@ use Redis::JobQueue qw(
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
 
 my $server = "127.0.0.1";
-my $port = 6379;
+#my $port = 6379;
 my $timeout = 1;
 
 my $redis;
 my $real_redis;
-eval { $real_redis = Redis->new( server => "$server:$port" ) };
+my $port = Net::EmptyPort::empty_port( 32637 ); # 32637-32766 Unassigned
+
+#eval { $real_redis = Redis->new( server => "$server:$port" ) };
+eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT ) };
+if ( !$real_redis )
+{
+    $redis = eval { Test::RedisServer->new( conf => { port => $port }, timeout => 3 ) };
+    if ( $redis )
+    {
+        eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".$port ) };
+    }
+}
+my $skip_msg;
+$skip_msg = "Redis server is unavailable" unless ( !$@ and $real_redis and $real_redis->ping );
+
 SKIP: {
+    diag $skip_msg if $skip_msg;
     skip( "Redis server is unavailable", 1 ) unless ( !$@ and $real_redis and $real_redis->ping );
 
 # For real Redis:
@@ -51,7 +66,7 @@ SKIP: {
 
 # For Test::RedisServer
 $real_redis->quit;
-$redis = Test::RedisServer->new( conf => { port => empty_port() } );
+$redis = Test::RedisServer->new( conf => { port => Net::EmptyPort::empty_port( 32637 ) } );
 isa_ok( $redis, 'Test::RedisServer' );
 
 my ( $jq, $job, $new_job );

@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -620,7 +620,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.11
+This documentation refers to C<Redis::JobQueue> version 0.12
 
 =head1 SYNOPSIS
 
@@ -1447,6 +1447,7 @@ package:
 
 C<Redis::JobQueue> package has the following optional dependencies:
 
+    Net::EmptyPort
     Test::Distribution
     Test::Exception
     Test::Kwalitee
@@ -1454,7 +1455,6 @@ C<Redis::JobQueue> package has the following optional dependencies:
     Test::Pod
     Test::Pod::Coverage
     Test::RedisServer
-    Test::TCP
 
 If the optional modules are missing, some "prereq" tests are skipped.
 
