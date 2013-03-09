@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 17;
+use Test::More tests => 19;
 
 use Redis::JobQueue::Job;
 
@@ -17,6 +17,7 @@ my @job_fields = qw(
     job
     expire
     status
+    attribute
     workload
     result
     );
@@ -27,6 +28,7 @@ my $pre_job = {
     job         => 'strong_job',
     expire      => 12*60*60,
     status      => 'created',
+    attribute   => scalar( localtime ),
     workload    => \'Some stuff up to 512MB long',
     result      => \'JOB result comes here, up to 512MB long',
     };

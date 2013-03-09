@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -252,6 +252,20 @@ sub check_job_status {
     my $key = NAMESPACE.':'.( ref( $arg )   ? $arg->id
                                             : $arg );
     return $self->_call_redis( 'HGET', $key, 'status' );
+}
+
+sub check_job_attribute {
+    my $self        = shift;
+    my $arg         = shift;
+
+    defined( _STRING( $arg ) )
+        or eval { $arg->isa( 'Redis::JobQueue::Job' ) }
+        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+        ;
+
+    my $key = NAMESPACE.':'.( ref( $arg )   ? $arg->id
+                                            : $arg );
+    return $self->_call_redis( 'HGET', $key, 'attribute' );
 }
 
 sub load_job {
@@ -620,7 +634,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.12
+This documentation refers to C<Redis::JobQueue> version 0.13
 
 =head1 SYNOPSIS
 
@@ -796,6 +810,7 @@ This example illustrates a C<add_job()> call with all the valid arguments:
         job          => 'strong_job',   # optional attribute
         expire       => 12*60*60,
         status       => 'created',
+        attribute    => scalar( localtime ),
         workload     => \'Some stuff up to 512MB long',
         result       => \'JOB result comes here, up to 512MB long',
         };
@@ -806,6 +821,7 @@ This example illustrates a C<add_job()> call with all the valid arguments:
         job          => $pre_job->{job},    # optional attribute
         expire       => $pre_job->{expire},
         status       => $pre_job->{status},
+        attribute    => $pre_job->{attribute},
         workload     => $pre_job->{workload},
         result       => $pre_job->{result},
         );
@@ -840,6 +856,21 @@ The following examples illustrate uses of the C<check_job_status> method:
     # or
     $status = $jq->check_job_status( $job );
 
+=head3 C<check_job_attribute( $job )>
+
+Attribute of the job is requested from the Redis server. Job ID is obtained from
+the argument. The argument can be either a string or
+a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
+
+Returns the attribute string or C<undef> when the job data does not exist.
+Returns C<undef> if the job is not on the Redis server.
+
+The following examples illustrate uses of the C<check_job_attribute> method:
+
+    my $attribute = $jq->check_job_attribute( $id );
+    # or
+    $attribute = $jq->check_job_attribute( $job );
+
 =head3 C<load_job( $job )>
 
 Jobs data are loaded from the Redis server. Job ID is obtained from
@@ -849,7 +880,7 @@ a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 Method returns the object corresponding to the loaded job.
 Returns C<undef> if the job is not on the Redis server.
 
-The following examples illustrate uses of the C<check_job_status> method:
+The following examples illustrate uses of the C<load_job> method:
 
     $job = $jq->load_job( $id );
     # or
@@ -1397,6 +1428,8 @@ For example:
     8) "43200"                                  # the key value
     9) "status"                                 # hash key
     10) "_created_"                             # the key value
+    11) "attribute"                             # hash key
+    12) "Sat Mar  9 09:11:27 2013"              # the key value
 
 After you create (L</add_job> method) or modify (L</update_job> method)
 the data set are within the time specified C<expire> attribute (seconds).

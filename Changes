@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+0.13  Fri Sut  09 2013
+    CHANGES:
+    - Attribute 'attribute' in the structure of jobs added
+
 0.12  Fri Mar  08 2013
     CHANGES:
     - The tests are executed even if the installed Redis server is not running

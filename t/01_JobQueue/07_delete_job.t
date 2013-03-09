@@ -77,6 +77,7 @@ my $pre_job = {
     job          => 'strong_job',
     expire       => 60,
     status       => 'created',
+    attribute    => scalar( localtime ),
     workload     => \'Some stuff up to 512MB long',
     result       => \'JOB result comes here, up to 512MB long',
     };
@@ -102,6 +103,7 @@ is $job->queue,         undef,          "correct value";
 is $job->job,           undef,          "correct value";
 is $job->expire,        undef,          "correct value";
 is $job->status,        STATUS_DELETED, "correct value";
+is $job->attribute,     undef,          "correct value";
 is ${$job->workload},   undef,          "correct value";
 is ${$job->result},     undef,          "correct value";
 

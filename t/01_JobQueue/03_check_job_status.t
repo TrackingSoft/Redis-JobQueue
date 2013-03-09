@@ -76,6 +76,7 @@ my $pre_job = {
     job          => 'strong_job',
     expire       => 30,
     status       => 'created',
+    attribute    => scalar( localtime ),
     workload     => \'Some stuff up to 512MB long',
     result       => \'JOB result comes here, up to 512MB long',
     };
@@ -104,6 +105,27 @@ foreach my $arg ( ( undef, "", \"scalar", [] ) )
 }
 
 is $jq->check_job_status( "something wrong" ), undef, "job does not exist";
+
+$jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
+
+#-- check_job_status -----------------------------------------------------------
+
+$job = $jq->add_job(
+    $pre_job,
+    );
+isa_ok( $job, 'Redis::JobQueue::Job');
+
+is $jq->check_job_attribute( $job ), $pre_job->{attribute}, "attribute OK";
+is $jq->check_job_attribute( $job->id ), $pre_job->{attribute}, "attribute OK";
+
+dies_ok { $jq->check_job_attribute() } "expecting to die - no arguments";
+
+foreach my $arg ( ( undef, "", \"scalar", [] ) )
+{
+    dies_ok { $jq->check_job_attribute( $arg ) } "expecting to die: ".( $arg || "" );
+}
+
+is $jq->check_job_attribute( "something wrong" ), undef, "job does not exist";
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 

@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 24;
+use Test::More tests => 26;
 
 BEGIN {
     eval "use Test::Exception";
@@ -23,6 +23,7 @@ my $pre_job = {
     job         => 'strong_job',
     expire      => 12*60*60,
     status      => 'created',
+    attribute   => scalar( localtime ),
     workload    => \'Some stuff up to 512MB long',
     result      => \'JOB result comes here, up to 512MB long',
     };
@@ -33,6 +34,7 @@ my $job = Redis::JobQueue::Job->new(
     job         => $pre_job->{job},
     expire      => $pre_job->{expire},
     status      => $pre_job->{status},
+    attribute   => $pre_job->{attribute},
     workload    => $pre_job->{workload},
     result      => $pre_job->{result},
     );
@@ -52,6 +54,7 @@ foreach my $expire ( ( -1, -3, "", "0.5", \"scalar", [], "something" ) )
         job         => $pre_job->{job},
         expire      => $expire,
         status      => $pre_job->{status},
+        attribute   => $pre_job->{attribute},
         workload    => $pre_job->{workload},
         result      => $pre_job->{result},
         ) } "expecting to die (expire = ".( $expire || "" ).")";
@@ -66,6 +69,7 @@ foreach my $workload ( ( undef, [] ) )
         job         => $pre_job->{job},
         expire      => $pre_job->{expire},
         status      => $pre_job->{status},
+        attribute   => $pre_job->{attribute},
         workload    => $workload,
         result      => $pre_job->{result},
         ) } "expecting to die (workload = ".( substr( $workload || "", 0, 10 ) ).")";
@@ -80,6 +84,7 @@ foreach my $result ( ( undef, [] ) )
         job         => $pre_job->{job},
         expire      => $pre_job->{expire},
         status      => $pre_job->{status},
+        attribute   => $pre_job->{attribute},
         workload    => $pre_job->{workload},
         result      => $result,
         ) } "expecting to die (result = ".( substr( $result || "", 0, 10 ) ).")";
@@ -97,7 +102,7 @@ foreach my $field ( qw( id status ) )
     }
 }
 
-foreach my $field ( qw( queue job ) )
+foreach my $field ( qw( queue job attribute ) )
 {
     my $tmp_pre_job = { %{$pre_job} };
     foreach my $val ( ( \"scalar", [] ) )

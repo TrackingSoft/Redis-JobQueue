@@ -6,7 +6,7 @@ use bytes;
 use strict;
 use warnings;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 #-- load the modules -----------------------------------------------------------
 
@@ -101,6 +101,13 @@ has 'status'        => (
     trigger     => sub { $_[0]->_variability_set( 'status' ) },
     );
 
+has 'attribute'     => (
+    is          => 'rw',
+    isa         => 'Maybe[Str]',
+    default     => '',
+    trigger     => sub { $_[0]->_variability_set( 'attribute' ) },
+    );
+
 has 'expire'        => (
     is          => 'rw',
     isa         => 'Maybe['.__PACKAGE__.'::NonNegInt]',
@@ -186,7 +193,7 @@ Redis::JobQueue::Job - Object interface for jobs creating and manipulating
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 0.12
+This documentation refers to C<Redis::JobQueue::Job> version 0.13
 
 =head1 SYNOPSIS
 
@@ -199,6 +206,7 @@ object:
         job          => 'strong_job',
         expire       => 12*60*60,               # 12h
         status       => 'created',
+        attribute    => scalar( localtime ),
         workload     => \'Some stuff up to 512MB long',
         result       => \'JOB result comes here, up to 512MB long',
         };
@@ -209,6 +217,7 @@ object:
         job          => $pre_job->{job},
         expire       => $pre_job->{expire},
         status       => $pre_job->{status},
+        attribute    => $pre_job->{attribute},
         workload     => $pre_job->{workload},
         result       => $pre_job->{result},
         );
@@ -223,7 +232,7 @@ For example:
     $job->$workload( \'New workload' );
     # or
     $job->$workload( 'New workload' );
-    
+
     my $id = $job->id;
     # 'workload' and 'result' return a reference to the data
     my $result = ${$job->result};
@@ -290,6 +299,8 @@ This example illustrates a C<new()> call with all the valid arguments:
                                         # (required)
         status      => '_created_',     # Current status of the job.
                 # Do not use it because value should be set by the worker.
+        attribute   => scalar( localtime ), # Attribute describing the job.
+                                        # (optional attribute)
         workload    => \'Some stuff up to 512MB long',
                 # Baseline data for the function of the worker
                 # (the function name specified in the 'job').
@@ -325,6 +336,8 @@ An error will cause the program to halt if the argument is not valid.
 =head3 C<expire>
 
 =head3 C<status>
+
+=head3 C<attribute>
 
 =head3 C<workload>
 

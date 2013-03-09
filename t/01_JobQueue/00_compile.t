@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 29;
+use Test::More tests => 30;
 
 BEGIN { use_ok 'Redis::JobQueue', qw(
     DEFAULT_SERVER
@@ -31,6 +31,7 @@ BEGIN { use_ok 'Redis::JobQueue', qw(
 can_ok( 'Redis::JobQueue', 'new' );
 can_ok( 'Redis::JobQueue', 'add_job' );
 can_ok( 'Redis::JobQueue', 'check_job_status' );
+can_ok( 'Redis::JobQueue', 'check_job_attribute' );
 can_ok( 'Redis::JobQueue', 'load_job' );
 can_ok( 'Redis::JobQueue', 'get_next_job' );
 can_ok( 'Redis::JobQueue', 'update_job' );
