@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -265,7 +265,7 @@ sub get_job_meta_data {
 
     my $key = NAMESPACE.':'.( ref( $arg )   ? $arg->id
                                             : $arg );
-    return $self->_call_redis( 'HGET', $key, 'attribute' );
+    return $self->_call_redis( 'HGET', $key, 'meta_data' );
 }
 
 sub load_job {
@@ -634,7 +634,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.14
+This documentation refers to C<Redis::JobQueue> version 0.15
 
 =head1 SYNOPSIS
 
@@ -810,7 +810,7 @@ This example illustrates a C<add_job()> call with all the valid arguments:
         job          => 'strong_job',   # optional attribute
         expire       => 12*60*60,
         status       => 'created',
-        attribute    => scalar( localtime ),
+        meta_data    => scalar( localtime ),
         workload     => \'Some stuff up to 512MB long',
         result       => \'JOB result comes here, up to 512MB long',
         };
@@ -821,7 +821,7 @@ This example illustrates a C<add_job()> call with all the valid arguments:
         job          => $pre_job->{job},    # optional attribute
         expire       => $pre_job->{expire},
         status       => $pre_job->{status},
-        attribute    => $pre_job->{attribute},
+        meta_data    => $pre_job->{meta_data},
         workload     => $pre_job->{workload},
         result       => $pre_job->{result},
         );
@@ -866,9 +866,9 @@ Returns C<undef> if the job is not on the Redis server.
 
 The following examples illustrate uses of the C<get_job_meta_data> method:
 
-    my $attribute = $jq->get_job_meta_data( $id );
+    my $meta_data = $jq->get_job_meta_data( $id );
     # or
-    $attribute = $jq->get_job_meta_data( $job );
+    $meta_data = $jq->get_job_meta_data( $job );
 
 =head3 C<load_job( $job )>
 
@@ -1427,7 +1427,7 @@ For example:
     8) "43200"                                  # the key value
     9) "status"                                 # hash key
     10) "_created_"                             # the key value
-    11) "attribute"                             # hash key
+    11) "meta_data"                             # hash key
     12) "Sat Mar  9 09:11:27 2013"              # the key value
 
 After you create (L</add_job> method) or modify (L</update_job> method)
