@@ -76,7 +76,7 @@ my $pre_job = {
     job          => 'strong_job',
     expire       => 30,
     status       => 'created',
-    attribute    => scalar( localtime ),
+    meta_data    => scalar( localtime ),
     workload     => \'Some stuff up to 512MB long',
     result       => \'JOB result comes here, up to 512MB long',
     };
@@ -95,7 +95,7 @@ $job = Redis::JobQueue::Job->new(
     job          => $pre_job->{job},
     expire       => $pre_job->{expire},
     status       => $pre_job->{status},
-    attribute    => $pre_job->{attribute},
+    meta_data    => $pre_job->{meta_data},
     workload     => $pre_job->{workload},
     result       => $pre_job->{result},
     );

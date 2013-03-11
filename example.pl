@@ -150,13 +150,13 @@ eval {
     {
         my $id = $job->id;
 
-        my $status = $jq->check_job_status( $id );
+        my $status = $jq->get_job_status( $id );
         print "Job '", $id, "' was '$status' status\n";
 
         $job->status( STATUS_WORKING );
         $jq->update_job( $job );
 
-        $status = $jq->check_job_status( $id );
+        $status = $jq->get_job_status( $id );
         print "Job '", $id, "' has new '$status' status\n";
 
         # do my stuff
@@ -172,7 +172,7 @@ eval {
         $job->status( STATUS_COMPLETED );
         $jq->update_job( $job );
 
-        $status = $jq->check_job_status( $id );
+        $status = $jq->get_job_status( $id );
         print "Job '", $id, "' has last '$status' status\n";
     }
 };
@@ -184,13 +184,13 @@ exception( $jq, $@ ) if $@;
 
 eval {
     # For example:
-    # my $status = $jq->check_job_status( $ARGV[0] );
+    # my $status = $jq->get_job_status( $ARGV[0] );
     # or:
     my @jobs = $jq->get_jobs;
 
     foreach my $id ( @jobs )
     {
-        my $status = $jq->check_job_status( $id );
+        my $status = $jq->get_job_status( $id );
         print "Job '$id' has '$status' status\n";
     }
 };
@@ -206,7 +206,7 @@ eval {
 
     foreach my $id ( @jobs )
     {
-        my $status = $jq->check_job_status( $id );
+        my $status = $jq->get_job_status( $id );
         print "Job '$id' has '$status' status\n";
 
         if ( $status eq STATUS_COMPLETED )

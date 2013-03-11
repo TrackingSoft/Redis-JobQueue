@@ -15,7 +15,7 @@ t/00_Job/04_job_attributes.t
 t/01_JobQueue/00_compile.t
 t/01_JobQueue/01_new.t
 t/01_JobQueue/02_add_job.t
-t/01_JobQueue/03_check_job_status.t
+t/01_JobQueue/03_get_job_status.t
 t/01_JobQueue/04_load_job.t
 t/01_JobQueue/05_get_next_job.t
 t/01_JobQueue/06_update_job.t

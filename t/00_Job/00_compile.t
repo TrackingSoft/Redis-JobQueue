@@ -16,7 +16,7 @@ my @job_fields = qw(
     job
     expire
     status
-    attribute
+    meta_data
     workload
     result
     );
@@ -30,7 +30,7 @@ can_ok( 'Redis::JobQueue::Job', 'id' );
 can_ok( 'Redis::JobQueue::Job', 'queue' );
 can_ok( 'Redis::JobQueue::Job', 'job' );
 can_ok( 'Redis::JobQueue::Job', 'status' );
-can_ok( 'Redis::JobQueue::Job', 'attribute' );
+can_ok( 'Redis::JobQueue::Job', 'meta_data' );
 can_ok( 'Redis::JobQueue::Job', 'expire' );
 can_ok( 'Redis::JobQueue::Job', 'workload' );
 can_ok( 'Redis::JobQueue::Job', 'result' );

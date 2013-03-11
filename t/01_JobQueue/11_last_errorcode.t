@@ -44,6 +44,8 @@ use Redis::JobQueue qw(
     EREDIS
     );
 
+$| = 1;
+
 my $redis;
 my $real_redis;
 my $port = Net::EmptyPort::empty_port( 32637 ); # 32637-32766 Unassigned
@@ -205,6 +207,7 @@ SKIP:
     $pre_job->{result} .= '*' x ( 1024 * 10 );
     $pre_job->{expire} = 0;
 
+    $jq->timeout( 1 );
     {
         do
         {
@@ -214,7 +217,7 @@ SKIP:
         eval {
             while ( my $job = $jq->get_next_job(
                 queue       => $pre_job->{queue},
-                blocking    => 1
+                blocking    => 1,
                 ) )
             {
                 ;
@@ -254,6 +257,7 @@ SKIP:
     my @new_jobs = $jq->get_jobs;
     ok !scalar( @new_jobs ), "the jobs expired";
 
+    $jq->timeout( 1 );
     eval {
         while ( my $job = $jq->get_next_job(
             queue       => $pre_job->{queue},

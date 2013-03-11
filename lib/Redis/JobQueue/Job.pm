@@ -6,7 +6,7 @@ use bytes;
 use strict;
 use warnings;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 #-- load the modules -----------------------------------------------------------
 
@@ -101,11 +101,11 @@ has 'status'        => (
     trigger     => sub { $_[0]->_variability_set( 'status' ) },
     );
 
-has 'attribute'     => (
+has 'meta_data'     => (
     is          => 'rw',
     isa         => 'Maybe[Str]',
     default     => '',
-    trigger     => sub { $_[0]->_variability_set( 'attribute' ) },
+    trigger     => sub { $_[0]->_variability_set( 'meta_data' ) },
     );
 
 has 'expire'        => (
@@ -193,7 +193,7 @@ Redis::JobQueue::Job - Object interface for jobs creating and manipulating
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 0.13
+This documentation refers to C<Redis::JobQueue::Job> version 0.14
 
 =head1 SYNOPSIS
 
@@ -206,7 +206,7 @@ object:
         job          => 'strong_job',
         expire       => 12*60*60,               # 12h
         status       => 'created',
-        attribute    => scalar( localtime ),
+        meta_data    => scalar( localtime ),
         workload     => \'Some stuff up to 512MB long',
         result       => \'JOB result comes here, up to 512MB long',
         };
@@ -217,7 +217,7 @@ object:
         job          => $pre_job->{job},
         expire       => $pre_job->{expire},
         status       => $pre_job->{status},
-        attribute    => $pre_job->{attribute},
+        meta_data    => $pre_job->{meta_data},
         workload     => $pre_job->{workload},
         result       => $pre_job->{result},
         );
@@ -299,8 +299,8 @@ This example illustrates a C<new()> call with all the valid arguments:
                                         # (required)
         status      => '_created_',     # Current status of the job.
                 # Do not use it because value should be set by the worker.
-        attribute   => scalar( localtime ), # Attribute describing the job.
-                                        # (optional attribute)
+        meta_data   => scalar( localtime ), # Job meta-data, such as custom
+                                        # attributes etc. (optional attribute)
         workload    => \'Some stuff up to 512MB long',
                 # Baseline data for the function of the worker
                 # (the function name specified in the 'job').
@@ -337,7 +337,7 @@ An error will cause the program to halt if the argument is not valid.
 
 =head3 C<status>
 
-=head3 C<attribute>
+=head3 C<meta_data>
 
 =head3 C<workload>
 

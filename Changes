@@ -1,6 +1,11 @@
 Revision history for Redis::JobQueue package
 
-0.13  Fri Sut  09 2013
+0.14  Mon Mar  11 2013
+    CHANGES:
+    - Attribute 'attribute' renamed 'meta_data'
+    - Methods 'check_job_...' renamed 'get_job_...'
+
+0.13  Sat Mar  09 2013
     CHANGES:
     - Attribute 'attribute' in the structure of jobs added
 

@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -240,7 +240,7 @@ sub add_job {
     return $job;
 }
 
-sub check_job_status {
+sub get_job_status {
     my $self        = shift;
     my $arg         = shift;
 
@@ -254,7 +254,7 @@ sub check_job_status {
     return $self->_call_redis( 'HGET', $key, 'status' );
 }
 
-sub check_job_attribute {
+sub get_job_meta_data {
     my $self        = shift;
     my $arg         = shift;
 
@@ -634,7 +634,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.13
+This documentation refers to C<Redis::JobQueue> version 0.14
 
 =head1 SYNOPSIS
 
@@ -680,7 +680,7 @@ This documentation refers to C<Redis::JobQueue> version 0.13
 
     #-- Consumer
     my $id = $ARGV[0];
-    my $status = $jq->check_job_status( $id );
+    my $status = $jq->get_job_status( $id );
 
     if ( $status eq 'completed' )
     {
@@ -841,7 +841,7 @@ attribute of the L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
 Method returns the object corresponding to the added job.
 
-=head3 C<check_job_status( $job )>
+=head3 C<get_job_status( $job )>
 
 Status of the job is requested from the Redis server. Job ID is obtained from
 the argument. The argument can be either a string or
@@ -850,26 +850,25 @@ a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 Returns the status string or C<undef> when the job data does not exist.
 Returns C<undef> if the job is not on the Redis server.
 
-The following examples illustrate uses of the C<check_job_status> method:
+The following examples illustrate uses of the C<get_job_status> method:
 
-    my $status = $jq->check_job_status( $id );
+    my $status = $jq->get_job_status( $id );
     # or
-    $status = $jq->check_job_status( $job );
+    $status = $jq->get_job_status( $job );
 
-=head3 C<check_job_attribute( $job )>
+=head3 C<get_job_meta_data( $job )>
 
-Attribute of the job is requested from the Redis server. Job ID is obtained from
-the argument. The argument can be either a string or
-a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
+Get job meta-data, such as custom attributes etc. from the Redis server.
+Takes single argument: either a String - job ID, or L<Redis::JobQueue::Job> object.
 
-Returns the attribute string or C<undef> when the job data does not exist.
+Returns the meta-data string or C<undef> when the job data does not exist.
 Returns C<undef> if the job is not on the Redis server.
 
-The following examples illustrate uses of the C<check_job_attribute> method:
+The following examples illustrate uses of the C<get_job_meta_data> method:
 
-    my $attribute = $jq->check_job_attribute( $id );
+    my $attribute = $jq->get_job_meta_data( $id );
     # or
-    $attribute = $jq->check_job_attribute( $job );
+    $attribute = $jq->get_job_meta_data( $job );
 
 =head3 C<load_job( $job )>
 
@@ -1317,13 +1316,13 @@ The example shows a possible treatment for possible errors.
         {
             my $id = $job->id;
 
-            my $status = $jq->check_job_status( $id );
+            my $status = $jq->get_job_status( $id );
             print "Job '", $id, "' was '$status' status\n";
 
             $job->status( STATUS_WORKING );
             $jq->update_job( $job );
 
-            $status = $jq->check_job_status( $id );
+            $status = $jq->get_job_status( $id );
             print "Job '", $id, "' has new '$status' status\n";
 
             # do my stuff
@@ -1339,7 +1338,7 @@ The example shows a possible treatment for possible errors.
             $job->status( STATUS_COMPLETED );
             $jq->update_job( $job );
 
-            $status = $jq->check_job_status( $id );
+            $status = $jq->get_job_status( $id );
             print "Job '", $id, "' has last '$status' status\n";
         }
     };
@@ -1350,13 +1349,13 @@ The example shows a possible treatment for possible errors.
 
     eval {
         # For example:
-        # my $status = $jq->check_job_status( $ARGV[0] );
+        # my $status = $jq->get_job_status( $ARGV[0] );
         # or:
         my @jobs = $jq->get_jobs;
 
         foreach my $id ( @jobs )
         {
-            my $status = $jq->check_job_status( $id );
+            my $status = $jq->get_job_status( $id );
             print "Job '$id' has '$status' status\n";
         }
     };
@@ -1372,7 +1371,7 @@ The example shows a possible treatment for possible errors.
 
         foreach my $id ( @jobs )
         {
-            my $status = $jq->check_job_status( $id );
+            my $status = $jq->get_job_status( $id );
             print "Job '$id' has '$status' status\n";
 
             if ( $status eq STATUS_COMPLETED )

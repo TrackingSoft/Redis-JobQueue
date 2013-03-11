@@ -16,7 +16,7 @@ my $pre_job = {
     job         => 'strong_job',
     expire      => 12*60*60,
     status      => 'created',
-    attribute   => scalar( localtime ),
+    meta_data   => scalar( localtime ),
     workload    => \'Some stuff up to 512MB long',
     result      => \'JOB result comes here, up to 512MB long',
     };

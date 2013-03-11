@@ -94,38 +94,38 @@ $job = $jq->add_job(
     );
 isa_ok( $job, 'Redis::JobQueue::Job');
 
-is $jq->check_job_status( $job ), STATUS_CREATED, "status OK";
-is $jq->check_job_status( $job->id ), STATUS_CREATED, "status OK";
+is $jq->get_job_status( $job ), STATUS_CREATED, "status OK";
+is $jq->get_job_status( $job->id ), STATUS_CREATED, "status OK";
 
-dies_ok { $jq->check_job_status() } "expecting to die - no arguments";
+dies_ok { $jq->get_job_status() } "expecting to die - no arguments";
 
 foreach my $arg ( ( undef, "", \"scalar", [] ) )
 {
-    dies_ok { $jq->check_job_status( $arg ) } "expecting to die: ".( $arg || "" );
+    dies_ok { $jq->get_job_status( $arg ) } "expecting to die: ".( $arg || "" );
 }
 
-is $jq->check_job_status( "something wrong" ), undef, "job does not exist";
+is $jq->get_job_status( "something wrong" ), undef, "job does not exist";
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 
-#-- check_job_status -----------------------------------------------------------
+#-- get_job_status -------------------------------------------------------------
 
 $job = $jq->add_job(
     $pre_job,
     );
 isa_ok( $job, 'Redis::JobQueue::Job');
 
-is $jq->check_job_attribute( $job ), $pre_job->{attribute}, "attribute OK";
-is $jq->check_job_attribute( $job->id ), $pre_job->{attribute}, "attribute OK";
+is $jq->get_job_meta_data( $job ), $pre_job->{meta_data}, "attribute OK";
+is $jq->get_job_meta_data( $job->id ), $pre_job->{meta_data}, "attribute OK";
 
-dies_ok { $jq->check_job_attribute() } "expecting to die - no arguments";
+dies_ok { $jq->get_job_meta_data() } "expecting to die - no arguments";
 
 foreach my $arg ( ( undef, "", \"scalar", [] ) )
 {
-    dies_ok { $jq->check_job_attribute( $arg ) } "expecting to die: ".( $arg || "" );
+    dies_ok { $jq->get_job_meta_data( $arg ) } "expecting to die: ".( $arg || "" );
 }
 
-is $jq->check_job_attribute( "something wrong" ), undef, "job does not exist";
+is $jq->get_job_meta_data( "something wrong" ), undef, "job does not exist";
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 
