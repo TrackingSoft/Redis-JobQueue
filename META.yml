@@ -25,4 +25,4 @@ requires:
   Params::Util: 1.07
   Redis: 1.926
   perl: 5.010
-version: 0.15
+version: 0.16

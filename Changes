@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+0.16  Tue Mar  12 2013
+    CHANGES:
+    - Added method 'server'
+
 0.15  Tue Mar  12 2013
     BUGFIXES:
     - Attribute 'attribute' renamed 'meta_data'

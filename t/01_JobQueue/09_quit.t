@@ -66,7 +66,8 @@ SKIP: {
 
 # For Test::RedisServer
 $real_redis->quit;
-$redis = Test::RedisServer->new( conf => { port => Net::EmptyPort::empty_port( 32637 ) } );
+$port = Net::EmptyPort::empty_port( 32637 );
+$redis = Test::RedisServer->new( conf => { port => $port } );
 isa_ok( $redis, 'Test::RedisServer' );
 
 my ( $jq, $job, @jobs );
@@ -86,6 +87,10 @@ $jq = Redis::JobQueue->new(
     timeout => $timeout,
     );
 isa_ok( $jq, 'Redis::JobQueue');
+
+#-- server
+is $jq->server, $jq->_server, 'redis address OK';
+is $jq->server, "$server:$port", 'redis address OK';
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 

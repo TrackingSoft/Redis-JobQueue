@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -478,6 +478,12 @@ sub get_jobs {
     return map { /$re/ } $self->_call_redis( 'KEYS', $key );
 }
 
+sub server {
+    my $self        = shift;
+
+    return $self->_server;
+}
+
 sub ping {
     my $self        = shift;
 
@@ -634,7 +640,7 @@ as well as the status and outcome objectives
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.15
+This documentation refers to C<Redis::JobQueue> version 0.16
 
 =head1 SYNOPSIS
 
@@ -989,6 +995,15 @@ Gets a list of job ids on the Redis server.
 The following examples illustrate uses of the C<get_jobs> method:
 
     @jobs = $jq->get_jobs;
+
+=head3 C<server>
+
+Returns the address of the Redis server used by the queue
+(in the form 'host:port').
+
+The following examples illustrate uses of the C<get_jobs> method:
+
+    $redis_address = $jq->server;
 
 =head3 C<ping>
 
