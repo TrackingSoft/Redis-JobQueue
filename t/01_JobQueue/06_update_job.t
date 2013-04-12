@@ -8,6 +8,7 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
+use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -28,9 +29,13 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    );
+
+use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
     STATUS_COMPLETED
+    STATUS_FAILED
     );
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
@@ -76,7 +81,6 @@ my $pre_job = {
     job          => 'strong_job',
     expire       => 60,
     status       => 'created',
-    meta_data    => scalar( localtime ),
     workload     => \'Some stuff up to 512MB long',
     result       => \'JOB result comes here, up to 512MB long',
     };
@@ -91,22 +95,20 @@ $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 
 foreach my $field ( keys %{$pre_job} )
 {
-#    next if $field =~ /expire|id/;
-
     $job = $jq->add_job( $pre_job );
     isa_ok( $job, 'Redis::JobQueue::Job');
 
     is scalar( $job->modified_attributes ), 0, "no modified fields";
     $job->$field( $job->$field );
-    is scalar( $job->modified_attributes ), 1, "is modified field";
+    is scalar( $job->modified_attributes ), 1 + ( $field =~ /^status|^meta_data|^workload|^result|^progress|^message|^completed/ ? 1 : 0 ), "is modified field"; # because also changes 'updated'
 
-    if ( $field =~ /id/ )
+    if ( $field eq 'id' )
     {
         $job->$field( $job->$field."wrong" );
         is scalar( $job->modified_attributes ), 1, "is modified field";
         ok !$jq->update_job( $job ), "job not found";
     }
-    elsif ( $field =~ /expire/ )
+    elsif ( $field eq 'expire' )
     {
         my $key = Redis::JobQueue::NAMESPACE.":".$job->id;
         ok $jq->_call_redis( 'TTL', $key ), "EXPIRE is";
@@ -117,7 +119,7 @@ foreach my $field ( keys %{$pre_job} )
         $new_job = $jq->load_job( $job->id );
         isnt $new_job->$field, $job->$field, "a valid value (".$job->$field.")";
     }
-    elsif ( $field =~ /workload|result/ )
+    elsif ( $field =~ /^workload|^result/ )
     {
         ok $jq->update_job( $job ), "successful update";
         $new_job = $jq->load_job( $job->id );
@@ -136,6 +138,36 @@ isa_ok( $job, 'Redis::JobQueue::Job');
 foreach my $arg ( ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] ) )
 {
     dies_ok { $jq->update_job( $arg ) } "expecting to die: ".( $arg || "" );
+}
+
+#$jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
+
+# Testing workload|result with valid data types
+$jq = Redis::JobQueue->new(
+    $redis,
+    timeout => $timeout,
+    );
+isa_ok( $jq, 'Redis::JobQueue');
+
+#$pre_job->{expire} = 600;
+$job = $jq->add_job( $pre_job );
+my $obj = $jq->add_job( $pre_job );
+
+foreach my $field ( qw( workload result ) )
+{
+    foreach my $val (
+        'Some stuff',
+        \'Any stuff',
+        { first => 'First stuff', second => 'Second stuff' },
+        [ 'Foo', 'Bar' ],
+        $obj,
+        )
+    {
+        $job->$field( $val );
+        is $jq->update_job( $job ), 2, 'job updated';   # because also changes 'updated'
+        my $retrieved_job = $jq->load_job( $job );
+        is_deeply $retrieved_job->$field, $job->$field, "$field is correct";
+    }
 }
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );

@@ -6,9 +6,15 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 22;
+use Test::More tests => 25;
+use Test::NoWarnings;
 
-BEGIN { use_ok 'Redis::JobQueue::Job' }
+BEGIN { use_ok 'Redis::JobQueue::Job', qw(
+    STATUS_CREATED
+    STATUS_WORKING
+    STATUS_COMPLETED
+    STATUS_FAILED
+    ) }
 
 my @job_fields = qw(
     id
@@ -19,26 +25,29 @@ my @job_fields = qw(
     meta_data
     workload
     result
+    progress
+    message
+    created
+    started
+    updated
+    completed
     );
 
-can_ok( 'Redis::JobQueue::Job', 'new' );
-can_ok( 'Redis::JobQueue::Job', 'modified_attributes' );
-can_ok( 'Redis::JobQueue::Job', 'clear_variability' );
-can_ok( 'Redis::JobQueue::Job', 'job_attributes' );
+my @job_methods = qw(
+    new
+    modified_attributes
+    clear_variability
+    job_attributes
+    elapsed
+    );
 
-can_ok( 'Redis::JobQueue::Job', 'id' );
-can_ok( 'Redis::JobQueue::Job', 'queue' );
-can_ok( 'Redis::JobQueue::Job', 'job' );
-can_ok( 'Redis::JobQueue::Job', 'status' );
-can_ok( 'Redis::JobQueue::Job', 'meta_data' );
-can_ok( 'Redis::JobQueue::Job', 'expire' );
-can_ok( 'Redis::JobQueue::Job', 'workload' );
-can_ok( 'Redis::JobQueue::Job', 'result' );
-
-foreach my $field ( @job_fields )
+foreach my $method ( @job_fields, @job_methods )
 {
-    can_ok( 'Redis::JobQueue::Job', $field );
+    can_ok( 'Redis::JobQueue::Job', $method );
 }
 
 my $val;
-ok( $val = Redis::JobQueue::Job::MAX_DATASIZE, "import OK: $val" );
+ok( $val = STATUS_CREATED,      "import OK: $val" );
+ok( $val = STATUS_WORKING,      "import OK: $val" );
+ok( $val = STATUS_COMPLETED,    "import OK: $val" );
+ok( $val = STATUS_FAILED,       "import OK: $val" );

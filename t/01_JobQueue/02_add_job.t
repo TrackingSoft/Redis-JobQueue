@@ -8,6 +8,7 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
+use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -28,9 +29,13 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    );
+
+use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
     STATUS_COMPLETED
+    STATUS_FAILED
     );
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
@@ -71,14 +76,19 @@ isa_ok( $redis, 'Test::RedisServer' );
 
 my ( $jq, $job, $resulting_job, $job2, $job3, $ret, @arr );
 my $pre_job = {
-    id           => '4BE19672-C503-11E1-BF34-28791473A258',
-    queue        => 'lovely_queue',
-    job          => 'strong_job',
-    expire       => 30,
-    status       => 'created',
-    meta_data    => scalar( localtime ),
-    workload     => \'Some stuff up to 512MB long',
-    result       => \'JOB result comes here, up to 512MB long',
+    id          => '4BE19672-C503-11E1-BF34-28791473A258',
+    queue       => 'lovely_queue',
+    job         => 'strong_job',
+    expire      => 30,
+    status      => 'created',
+    workload    => \'Some stuff up to 512MB long',
+    result      => \'JOB result comes here, up to 512MB long',
+    progress    => 0.1,
+    message     => 'Some message',
+    created     => time,
+    started     => time,
+    updated     => time,
+    completed   => time,
     };
 
 $jq = Redis::JobQueue->new(
@@ -95,7 +105,6 @@ $job = Redis::JobQueue::Job->new(
     job          => $pre_job->{job},
     expire       => $pre_job->{expire},
     status       => $pre_job->{status},
-    meta_data    => $pre_job->{meta_data},
     workload     => $pre_job->{workload},
     result       => $pre_job->{result},
     );
@@ -106,7 +115,7 @@ $resulting_job = $jq->add_job(
     );
 isa_ok( $resulting_job, 'Redis::JobQueue::Job');
 
-is scalar( $job->modified_attributes ), scalar( keys %{$pre_job} ), "all fields are modified";
+is scalar( $job->modified_attributes ) - 1, scalar( keys %{$pre_job} ), "all fields are modified";
 
 $resulting_job = $jq->add_job(
     $job,
@@ -118,6 +127,11 @@ $resulting_job = $jq->add_job(
     LPUSH       => 1,
     );
 isa_ok( $resulting_job, 'Redis::JobQueue::Job');
+
+my $prev_id = $job->id;
+my $added_job = $jq->add_job( $job );
+is scalar( $job ), scalar( $added_job ), 'job is modified (address not changed)';
+isnt $added_job->id, $prev_id, 'id changed';
 
 #-------------------------------------------------------------------------------
 
@@ -157,12 +171,12 @@ $job3 = $jq->add_job(
     $job2,
     );
 
-is scalar ( @arr = $jq->_call_redis( 'LRANGE', Redis::JobQueue::NAMESPACE.":queue:".$job2->queue, 0, -1 ) ), 2, "queue exists: @arr";
-is scalar ( @arr = $jq->_call_redis( 'HGETALL', Redis::JobQueue::NAMESPACE.":".$job2->id ) ), ( scalar keys %{$pre_job} ) * 2, "right hash";
+is scalar( @arr = $jq->_call_redis( 'LRANGE', Redis::JobQueue::NAMESPACE.":queue:".$job2->queue, 0, -1 ) ), 2, "queue exists: @arr";
+is scalar( @arr = $jq->_call_redis( 'HGETALL', Redis::JobQueue::NAMESPACE.":".$job2->id ) ), ( scalar keys %{$pre_job} ) * 2, "right hash";
 
 foreach my $field ( keys %{$pre_job} )
 {
-    if ( $field =~ /workload|result/ )
+    if ( $field =~ /^workload|^result/ )
     {
         is $jq->_call_redis( 'HGET', Redis::JobQueue::NAMESPACE.":".$job2->id, $field ), ${$job2->$field}, "a valid value (".${$job2->$field}.")";
     }

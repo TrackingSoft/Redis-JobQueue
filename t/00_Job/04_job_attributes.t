@@ -6,7 +6,8 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 3;
+use Test::More tests => 4;
+use Test::NoWarnings;
 
 use Redis::JobQueue::Job;
 
@@ -20,6 +21,12 @@ my @job_fields = qw(
     meta_data
     workload
     result
+    progress
+    message
+    created
+    started
+    updated
+    completed
     );
 
 my $pre_job = {
@@ -28,7 +35,6 @@ my $pre_job = {
     job         => 'strong_job',
     expire      => 12*60*60,
     status      => 'created',
-    meta_data   => scalar( localtime ),
     workload    => \'Some stuff up to 512MB long',
     result      => \'JOB result comes here, up to 512MB long',
     };

@@ -8,6 +8,7 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
+use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -28,10 +29,14 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    );
+use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
     STATUS_COMPLETED
+    STATUS_FAILED
     );
+use Storable;
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
 
@@ -74,11 +79,10 @@ my $pre_job = {
     id           => '4BE19672-C503-11E1-BF34-28791473A258',
     queue        => 'lovely_queue',
     job          => 'strong_job',
-    expire       => 30,
+    expire       => 300,
     status       => 'created',
-    meta_data    => scalar( localtime ),
     workload     => \'Some stuff up to 512MB long',
-    result       => \'JOB result comes here, up to 512MB long',
+    result       => \Storable::nfreeze( \'JOB result comes here, up to 512MB long' ),
     };
 
 $jq = Redis::JobQueue->new(
@@ -97,11 +101,11 @@ is scalar( $job->modified_attributes ), 0, "all fields are modified";
 $new_job = $jq->load_job( $job );
 isa_ok( $new_job, 'Redis::JobQueue::Job');
 
-is scalar( $new_job->modified_attributes ), 0, "no modified fields";
+is scalar( $new_job->modified_attributes ), 1, "no modified fields";
 
 foreach my $field ( keys %{$pre_job} )
 {
-    if ( $field =~ /workload|result/ )
+    if ( $field =~ /^workload|^result/ )
     {
         is ${$new_job->$field}, ${$job->$field}, "a valid value (".${$job->$field}.")";
     }
@@ -124,5 +128,30 @@ foreach my $arg ( ( undef, "", \"scalar", [] ) )
 is $jq->load_job( "something wrong" ), undef, "job does not exist";
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
+
+for my $test_data (
+    12,
+    [ 13, 14, 15 ],
+    { a => 'b', c => 'd' },
+    \'Hello, World',
+    \'Hello, REF World',
+    Storable::nfreeze( \'Data for Storable' ),
+    \Storable::nfreeze( \'Data for Storable' ),
+    $new_job,
+    )
+{
+    $pre_job->{result} = $test_data;
+    my $test_job = $jq->add_job( $pre_job );
+    my $load_job = $jq->load_job( $test_job );
+    if ( !ref( $test_data ) )
+    {
+# For scalar values 'workload' and 'result' ​​references returned
+        is_deeply $load_job->result, \$pre_job->{result}, "OK $test_data";
+    }
+    else
+    {
+        is_deeply $load_job->result, $pre_job->{result}, "OK $test_data";
+    }
+}
 
 };

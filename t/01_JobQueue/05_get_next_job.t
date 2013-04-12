@@ -8,6 +8,7 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
+use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -28,9 +29,13 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    );
+
+use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
     STATUS_COMPLETED
+    STATUS_FAILED
     );
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
@@ -76,7 +81,6 @@ my $pre_job = {
     job          => 'strong_job',
     expire       => 30,
     status       => 'created',
-    meta_data    => scalar( localtime ),
     workload     => \'Some stuff up to 512MB long',
     result       => \'JOB result comes here, up to 512MB long',
     };
@@ -125,7 +129,7 @@ foreach my $blocking ( ( 0, 1 ) )
 
             foreach my $field ( keys %{$pre_job} )
             {
-                if ( $field =~ /workload|result/ )
+                if ( $field =~ /^workload|^result/ )
                 {
                     is ${$new_job->$field}, ${$jobs[ $idx ]->$field}, "a valid data (".${$new_job->$field}.")";
                 }
@@ -172,7 +176,7 @@ $pre_job->{job} = $name;
 $job = Redis::JobQueue::Job->new( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');
 
-unshift( @jobs, $jq->add_job( $job, LPUSH => $to_left ) ) for ( 0..2 );
+unshift( @jobs, $jq->add_job( $pre_job, LPUSH => $to_left ) ) for ( 0..2 );
 isa_ok( $jobs[ $_ ], 'Redis::JobQueue::Job' ) for ( 0..2 );
 
 $idx = 0;
@@ -184,7 +188,7 @@ while ( my $new_job = $jq->get_next_job(
 
     foreach my $field ( keys %{$pre_job} )
     {
-        if ( $field =~ /workload|result/ )
+        if ( $field =~ /^workload|^result/ )
         {
             is ${$new_job->$field}, ${$jobs[ $idx ]->$field}, "a valid value (".${$new_job->$field}.")";
         }

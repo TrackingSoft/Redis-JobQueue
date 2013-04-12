@@ -8,6 +8,7 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
+use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -28,10 +29,13 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    );
+
+use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
     STATUS_COMPLETED
-    STATUS_DELETED
+    STATUS_FAILED
     );
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
@@ -77,7 +81,6 @@ my $pre_job = {
     job          => 'strong_job',
     expire       => 60,
     status       => 'created',
-    meta_data    => scalar( localtime ),
     workload     => \'Some stuff up to 512MB long',
     result       => \'JOB result comes here, up to 512MB long',
     };
@@ -97,23 +100,7 @@ ok $jq->load_job( $job->id ), "job does exist";
 my $id = $job->id;
 ok $jq->delete_job( $job ), "job deleted";
 $job = $jq->load_job( $job->id );
-isa_ok( $job, 'Redis::JobQueue::Job');
-is $job->id,            $id,            "correct value";
-is $job->queue,         undef,          "correct value";
-is $job->job,           undef,          "correct value";
-is $job->expire,        undef,          "correct value";
-is $job->status,        STATUS_DELETED, "correct value";
-is $job->meta_data,     undef,          "correct value";
-is ${$job->workload},   undef,          "correct value";
-is ${$job->result},     undef,          "correct value";
-
-$job = $jq->add_job( $pre_job );
-isa_ok( $job, 'Redis::JobQueue::Job');
-
-ok $jq->load_job( $job->id ), "job does exist";
-ok $jq->delete_job( $job->id ), "job deleted";
-$job = $jq->load_job( $job->id );
-isa_ok( $job, 'Redis::JobQueue::Job');
+is $job, undef, "job undefined (job does not exist)";
 
 $job = $jq->add_job( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');

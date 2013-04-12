@@ -186,9 +186,9 @@ eval {
     # For example:
     # my $status = $jq->get_job_status( $ARGV[0] );
     # or:
-    my @jobs = $jq->get_jobs;
+    my @ids = $jq->get_job_ids;
 
-    foreach my $id ( @jobs )
+    foreach my $id ( @ids )
     {
         my $status = $jq->get_job_status( $id );
         print "Job '$id' has '$status' status\n";
@@ -202,9 +202,9 @@ eval {
     # For example:
     # my $id = $ARGV[0];
     # or:
-    my @jobs = $jq->get_jobs;
+    my @ids = $jq->get_job_ids;
 
-    foreach my $id ( @jobs )
+    foreach my $id ( @ids )
     {
         my $status = $jq->get_job_status( $id );
         print "Job '$id' has '$status' status\n";
@@ -213,7 +213,7 @@ eval {
         {
             my $job = $jq->load_job( $id );
 
-            # now safe to compelete it from JobQueue, since it's completed
+            # it is now safe to remove it from JobQueue, since it is completed
             $jq->delete_job( $id );
 
             print "Job result: ", ${$job->result}, "\n";

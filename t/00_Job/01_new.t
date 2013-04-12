@@ -6,10 +6,11 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 26;
+use Test::More tests => 53;
+use Test::NoWarnings;
 
 BEGIN {
-    eval "use Test::Exception";
+    eval "use Test::Exception";     ## no critic
     plan skip_all => "because Test::Exception required for testing" if $@;
 }
 
@@ -23,7 +24,6 @@ my $pre_job = {
     job         => 'strong_job',
     expire      => 12*60*60,
     status      => 'created',
-    meta_data   => scalar( localtime ),
     workload    => \'Some stuff up to 512MB long',
     result      => \'JOB result comes here, up to 512MB long',
     };
@@ -34,7 +34,6 @@ my $job = Redis::JobQueue::Job->new(
     job         => $pre_job->{job},
     expire      => $pre_job->{expire},
     status      => $pre_job->{status},
-    meta_data   => $pre_job->{meta_data},
     workload    => $pre_job->{workload},
     result      => $pre_job->{result},
     );
@@ -54,14 +53,13 @@ foreach my $expire ( ( -1, -3, "", "0.5", \"scalar", [], "something" ) )
         job         => $pre_job->{job},
         expire      => $expire,
         status      => $pre_job->{status},
-        meta_data   => $pre_job->{meta_data},
         workload    => $pre_job->{workload},
         result      => $pre_job->{result},
         ) } "expecting to die (expire = ".( $expire || "" ).")";
 }
 
 #foreach my $workload ( ( undef, [], \( "*" x ( Redis::JobQueue::Job::MAX_DATASIZE + 1 ) ) ) )
-foreach my $workload ( ( undef, [] ) )
+foreach my $workload ( ( undef ) )
 {
     dies_ok { my $job = Redis::JobQueue::Job->new(
         id          => $pre_job->{id},
@@ -69,14 +67,13 @@ foreach my $workload ( ( undef, [] ) )
         job         => $pre_job->{job},
         expire      => $pre_job->{expire},
         status      => $pre_job->{status},
-        meta_data   => $pre_job->{meta_data},
         workload    => $workload,
         result      => $pre_job->{result},
         ) } "expecting to die (workload = ".( substr( $workload || "", 0, 10 ) ).")";
 }
 
 #foreach my $result ( ( undef, [], \( "*" x ( Redis::JobQueue::Job::MAX_DATASIZE + 1 ) ) ) )
-foreach my $result ( ( undef, [] ) )
+foreach my $result ( ( undef ) )
 {
     dies_ok { my $job = Redis::JobQueue::Job->new(
         id          => $pre_job->{id},
@@ -84,15 +81,16 @@ foreach my $result ( ( undef, [] ) )
         job         => $pre_job->{job},
         expire      => $pre_job->{expire},
         status      => $pre_job->{status},
-        meta_data   => $pre_job->{meta_data},
         workload    => $pre_job->{workload},
         result      => $result,
         ) } "expecting to die (result = ".( substr( $result || "", 0, 10 ) ).")";
 }
 
+my $tmp_pre_job;
+
 foreach my $field ( qw( id status ) )
 {
-    my $tmp_pre_job = { %{$pre_job} };
+    $tmp_pre_job = { %{$pre_job} };
     foreach my $val ( ( undef, \"scalar", [] ) )
     {
         $tmp_pre_job->{ $field } = $val;
@@ -102,10 +100,40 @@ foreach my $field ( qw( id status ) )
     }
 }
 
-foreach my $field ( qw( queue job meta_data ) )
+foreach my $field ( qw( queue job ) )
 {
-    my $tmp_pre_job = { %{$pre_job} };
+    $tmp_pre_job = { %{$pre_job} };
     foreach my $val ( ( \"scalar", [] ) )
+    {
+        $tmp_pre_job->{ $field } = $val;
+        dies_ok { my $job = Redis::JobQueue::Job->new(
+            $tmp_pre_job
+            ) } "expecting to die ($field = ".( substr( $val || "", 0, 10 ) ).")";
+    }
+}
+
+$tmp_pre_job = { %{$pre_job} };
+foreach my $val ( ( undef, -1, -3, "", 9999999999999999, \"scalar", [] ) )
+{
+    $tmp_pre_job->{progress} = $val;
+    dies_ok { my $job = Redis::JobQueue::Job->new(
+        $tmp_pre_job
+        ) } "expecting to die (progress = ".( $val // '<undef>' ).")";
+}
+
+$tmp_pre_job = { %{$pre_job} };
+foreach my $val ( ( \"scalar", [] ) )
+{
+    $tmp_pre_job->{message} = $val;
+    dies_ok { my $job = Redis::JobQueue::Job->new(
+        $tmp_pre_job
+        ) } "expecting to die (message = ".( $val // '<undef>' ).")";
+}
+
+foreach my $field ( qw( created updated completed ) )
+{
+    $tmp_pre_job = { %{$pre_job} };
+    foreach my $val ( ( -1, -3, "", "0.5", \"scalar", [], "something" ) )
     {
         $tmp_pre_job->{ $field } = $val;
         dies_ok { my $job = Redis::JobQueue::Job->new(

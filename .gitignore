@@ -5,3 +5,4 @@
 /Redis-JobQueue-*
 /benchmark_*
 /crash.t
+/Makefile.old

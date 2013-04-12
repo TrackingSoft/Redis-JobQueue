@@ -8,6 +8,7 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
+use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -29,19 +30,20 @@ use Redis::JobQueue qw(
     DEFAULT_PORT
     DEFAULT_TIMEOUT
 
-    STATUS_CREATED
-    STATUS_WORKING
-    STATUS_COMPLETED
-    STATUS_DELETED
-
     ENOERROR
     EMISMATCHARG
     EDATATOOLARGE
     ENETWORK
     EMAXMEMORYLIMIT
-    EMAXMEMORYPOLICY
     EJOBDELETED
     EREDIS
+    );
+
+use Redis::JobQueue::Job qw(
+    STATUS_CREATED
+    STATUS_WORKING
+    STATUS_COMPLETED
+    STATUS_FAILED
     );
 
 $| = 1;
@@ -74,7 +76,6 @@ my $pre_job = {
     job          => 'strong_job',
     expire       => 60,
     status       => 'created',
-    meta_data    => scalar( localtime ),
     workload     => \'Some stuff up to 512MB long',
     result       => \'JOB result comes here, up to 512MB long',
     };
@@ -117,7 +118,7 @@ $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 $job = $jq->add_job( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');
 
-@jobs = $jq->get_jobs;
+@jobs = $jq->get_job_ids;
 ok scalar( @jobs ), "jobs exists";
 
 #-- ENOERROR
@@ -153,7 +154,7 @@ isa_ok( $job, 'Redis::JobQueue::Job');
 $jq->quit;
 
 @jobs = ();
-eval { @jobs = $jq->get_jobs };
+eval { @jobs = $jq->get_job_ids };
 is $jq->last_errorcode, ENETWORK, "ENETWORK";
 note '$@: ', $@;
 ok !scalar( @jobs ), '@jobs is empty';
@@ -186,7 +187,7 @@ SKIP:
     $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 }
 
-#-- EMAXMEMORYPOLICY
+#-- job was removed by maxmemory-policy (EJOBDELETED)
 
 SKIP:
 {
@@ -223,10 +224,10 @@ SKIP:
                 ;
             }
         };
-        redo unless ( $jq->last_errorcode == EMAXMEMORYPOLICY );
+        redo unless ( $jq->last_errorcode == EJOBDELETED );
     }
     ok $@, "exception";
-    is $jq->last_errorcode, EMAXMEMORYPOLICY, "EMAXMEMORYPOLICY";
+    is $jq->last_errorcode, EJOBDELETED, "job was removed by maxmemory-policy";
     note '$@: ', $@;
 
     $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
@@ -250,11 +251,11 @@ SKIP:
     $pre_job->{expire} = 1;
 
     eval { $job = $jq->add_job( $pre_job ) } for ( 1..10 );
-    my @jobs = $jq->get_jobs;
+    my @jobs = $jq->get_job_ids;
     ok scalar( @jobs ), "the jobs added";
     $jq->delete_job( $_ ) foreach @jobs;
     sleep $pre_job->{expire} * 2;
-    my @new_jobs = $jq->get_jobs;
+    my @new_jobs = $jq->get_job_ids;
     ok !scalar( @new_jobs ), "the jobs expired";
 
     $jq->timeout( 1 );
@@ -273,7 +274,7 @@ SKIP:
     $pre_job->{expire} = 2;
 
     eval { $job = $jq->add_job( $pre_job ) } for ( 1..10 );
-    @jobs = $jq->get_jobs;
+    @jobs = $jq->get_job_ids;
     ok scalar( @jobs ), "the jobs added";
     $jq->delete_job( $_ ) foreach @jobs;
 

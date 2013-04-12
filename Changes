@@ -1,5 +1,44 @@
 Revision history for Redis::JobQueue package
 
+0.17  Wed Apr  24 2013
+    CHANGES:
+    - Fields 'result' and 'workload':
+      It is possible to use any data structure (SCALAR, HASH, ARRAY, OBJECT).
+      It is automatically serialized.
+      Allowable size of the data is determined based on the size of the
+      serialized string.
+    - Added standard fields:
+      Times when job was: 'created', 'started', 'completed', 'updated'
+      (user settable),
+      Job 'progress' (0...1) and arbitrary status 'message'.
+      Appropriate methods added.
+    - The 'updated' field automatically changes with every change to a job.
+    - Added a method 'elapsed'.
+    - A set of constants to reflect job status:
+      CREATED, WORKING, FAILED, COMPLETED, the user can specify own value
+      for status.
+      Moved from module Redis::JobQueue to module Redis::JobQueue::Job.
+    - Added work with the jobs metadata
+      (additional information related to the job):
+      It is automatically serialized.
+      Methods 'Redis::JobQueue::Job->meta_data',
+      'Redis::JobQueue->get_job_meta_data'.
+    - Constant MAX_DATASIZE moved to module Redis::JobQueue.
+    - No longer used constants EMAXMEMORYPOLICY, STATUS_DELETED, EXPIRE_DELETED.
+    - Added a method 'queue_status' for monitoring the state of the queue.
+    - Method 'delete_job' removes Redis data structures that are associated
+      with the job.
+    - Method 'get_jobs' renamed to 'get_job_ids'.
+      Jobs can be filtered by queue name or status.
+    - Method 'add_job' updates to Redis::JobQueue::Job> object, if it was passed
+      as the first argument.
+    - 'encoding => undef' for the Redis used, if 'new' invoked without
+      the first argument being an object of 'Redis::JobQueue' or 'Redis' class.
+    - Exception for not serialized utf8 text fields, when Redis object set
+      to 'encoding => undef'.
+    - Added test using 'utf8' data (t/01_JobQueue/t_utf8.t).
+    - Added new functionality testing.
+
 0.16  Tue Mar  12 2013
     CHANGES:
     - Added method 'server'

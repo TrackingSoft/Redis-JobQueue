@@ -7,6 +7,7 @@ use warnings;
 use lib 'lib';
 
 use Test::More;
+
 use English qw( -no_match_vars );
 
 eval "use Test::Perl::Critic";

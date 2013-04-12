@@ -8,6 +8,7 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
+use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -28,9 +29,13 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    );
+
+use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
     STATUS_COMPLETED
+    STATUS_FAILED
     );
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
@@ -138,6 +143,8 @@ $next_jq = Redis::JobQueue->new(
     timeout => 3,
     );
 isa_ok( $next_jq, 'Redis::JobQueue');
+#is $next_jq->_redis->{encoding}, $redis->isa( 'Redis' ) ? 'utf8' : undef, $redis->isa( 'Redis' ) ? 'encoding exists' : 'encoding not exists';
+is $next_jq->_redis->{encoding}, undef, 'encoding not exists';
 is $next_jq->_server, $next_jq->_redis->{server}, $msg;
 is $next_jq->timeout, 3, $msg;
 ok ref( $jq->_redis ) =~ /Redis/, $msg;

@@ -2,22 +2,38 @@ package Redis::JobQueue::Job;
 use 5.010;
 
 # Pragmas
-use bytes;
 use strict;
 use warnings;
 
-our $VERSION = '0.16';
+our $VERSION = '0.17';
+
+use Exporter qw( import );
+our @EXPORT_OK  = qw(
+    STATUS_CREATED
+    STATUS_WORKING
+    STATUS_COMPLETED
+    STATUS_FAILED
+    );
 
 #-- load the modules -----------------------------------------------------------
 
 # Modules
+use List::Util qw(
+    min
+    );
 use Mouse;                                      # automatically turns on strict and warnings
 use Mouse::Util::TypeConstraints;
+use Params::Util qw(
+    _HASH0
+    );
 
 #-- declarations ---------------------------------------------------------------
 
 use constant {
-    MAX_DATASIZE        => 512*1024*1024,       # A String value can be at max 512 Megabytes in length.
+    STATUS_CREATED      => '__created__',
+    STATUS_WORKING      => '__working__',
+    STATUS_COMPLETED    => '__completed__',
+    STATUS_FAILED       => '__failed__',
     };
 
 my $meta = __PACKAGE__->meta;
@@ -28,29 +44,23 @@ subtype __PACKAGE__.'::NonNegInt',
     message { ( $_ || '' ).' is not a non-negative integer!' }
     ;
 
+subtype __PACKAGE__.'::Progress',
+    as 'Num',
+    where { $_ >= 0 and $_ <= 1 },
+    message { ( $_ || '' ).' is not a progress number!' }
+    ;
+
 subtype __PACKAGE__.'::WOSpStr',
     as 'Str',
     where { $_ !~ / / },
-    message { ( $_ || '' ).' is not a without-space string!' }
-    ;
-
-subtype __PACKAGE__.'::DataStr',
-    as 'Str',
-    where { bytes::length( $_ ) <= MAX_DATASIZE },
-    message { "'".( $_ || '' )."' is not a valid data string!" }
-    ;
-
-subtype __PACKAGE__.'::DataStrRef',
-    as 'ScalarRef',
-    where { !defined( ${$_} ) or bytes::length( ${$_} ) <= MAX_DATASIZE },
-    message { "a reference to '".substr( ${$_}, 0, 10 )."...' is not a reference to a valid data string!" }
+    message { ( $_ || '' ).' contains spaces!' }
     ;
 
 subtype __PACKAGE__.'::DataRef',
-    as __PACKAGE__.'::DataStrRef';
+    as 'ScalarRef';
 
 coerce __PACKAGE__.'::DataRef',
-    from __PACKAGE__.'::DataStr',
+    from 'Str',
     via { \$_ }
     ;
 
@@ -97,14 +107,15 @@ has 'job'           => (
 has 'status'        => (
     is          => 'rw',
     isa         => 'Str',
-    default     => '',
-    trigger     => sub { $_[0]->_variability_set( 'status' ) },
+    default     => STATUS_CREATED,
+    trigger     => sub { $_[0]->_variability_set( 'status', $_[1] ) },
     );
 
-has 'meta_data'     => (
+has '_meta_data'     => (
     is          => 'rw',
-    isa         => 'Maybe[Str]',
-    default     => '',
+    isa         => 'HashRef',
+    init_arg    => 'meta_data',
+    default     => sub { {} },
     trigger     => sub { $_[0]->_variability_set( 'meta_data' ) },
     );
 
@@ -117,14 +128,48 @@ has 'expire'        => (
 
 for my $name ( qw( workload result ) )
 {
-    has $name      => (
+    has $name           => (
         is          => 'rw',
         # A reference because attribute can contain a large amount of data
-        isa         => __PACKAGE__.'::DataStrRef | '.__PACKAGE__.'::DataRef',
+        isa         => __PACKAGE__.'::DataRef | HashRef | ArrayRef | ScalarRef | Object',
         coerce      => 1,
         builder     => '_build_data',           # will throw an error if you pass a bare non-subroutine reference as the default
         trigger     => sub { $_[0]->_variability_set( $name ) },
     );
+}
+
+has 'progress'      => (
+    is          => 'rw',
+    isa         => __PACKAGE__.'::Progress',
+    default     => 0,
+    trigger     => sub { $_[0]->_variability_set( 'progress' ) },
+    );
+
+has 'message'       => (
+    is          => 'rw',
+    isa         => 'Maybe[Str]',
+    default     => '',
+    trigger     => sub { $_[0]->_variability_set( 'message' ) },
+    );
+
+for my $name ( qw( created updated ) )
+{
+    has $name           => (
+        is          => 'rw',
+        isa         => __PACKAGE__.'::NonNegInt',
+        default     => sub { time },
+        trigger     => sub { $_[0]->_variability_set( $name ) },
+        );
+}
+
+for my $name ( qw( started completed ) )
+{
+    has $name           => (
+        is          => 'rw',
+        isa         => __PACKAGE__.'::NonNegInt',
+        default     => 0,
+        trigger     => sub { $_[0]->_variability_set( $name ) },
+        );
 }
 
 #-- private attributes ---------------------------------------------------------
@@ -142,7 +187,9 @@ has '_variability'   => (
 sub clear_variability {
     my $self    = shift;
 
-    foreach my $field ( @_ )
+    my @fields = @_;
+    @fields = $self->job_attributes unless @fields;
+    foreach my $field ( @fields )
     {
         $self->_variability->{ $field } = 0
             if exists $self->_variability->{ $field };
@@ -156,7 +203,44 @@ sub modified_attributes {
 }
 
 sub job_attributes {
-    return map { $_->name } grep { $_->name !~ /variability/ } $meta->get_all_attributes;
+    return map { $_->name eq '_meta_data' ? 'meta_data' : $_->name } grep { $_->name ne '_variability' } $meta->get_all_attributes;
+}
+
+sub elapsed {
+    my $self        = shift;
+
+    if ( my $started = $self->started )
+    {
+        return( ( $self->completed || time ) - $started );
+    }
+    else
+    {
+        return;
+    }
+}
+
+sub meta_data {
+    my $self    = shift;
+    my $key     = shift;
+    my $val     = shift;
+
+    return $self->_meta_data if !defined $key;
+
+    # metadata can be set with an external hash
+    $self->_meta_data( $key ) if defined _HASH0( $key );
+
+    # getter
+    return $self->_meta_data->{ $key } if !defined $val;
+
+    # setter
+    $self->_meta_data->{ $key } = $val;
+
+    # job data change
+    $self->updated( time );
+    ++$self->_variability->{ 'updated' };
+    ++$self->_variability->{ 'meta_data' };
+
+    return;
 }
 
 #-- private methods ------------------------------------------------------------
@@ -175,8 +259,24 @@ sub _build_variability {
 
 sub _variability_set {
     my $self    = shift;
+    my $field   = shift;
 
-    ++$self->_variability->{ $_[0] };
+    if ( $field =~ /^(status|meta_data|workload|result|progress|message|started|completed)$/ )
+    {
+        $self->updated( time );
+        ++$self->_variability->{ 'updated' };
+    }
+
+    if ( $field eq 'status' )
+    {
+        my $new_status = shift;
+        if      ( $new_status eq STATUS_CREATED )   { $self->created( time ) }
+        elsif   ( $new_status eq STATUS_WORKING )   { $self->started( time ) }
+        elsif   ( $new_status eq STATUS_COMPLETED ) { $self->completed( time ) }
+        elsif   ( $new_status eq STATUS_FAILED )    { $self->completed( time ) }
+    }
+
+    ++$self->_variability->{ $field };
 }
 
 #-- Closes and cleans up -------------------------------------------------------
@@ -193,7 +293,7 @@ Redis::JobQueue::Job - Object interface for jobs creating and manipulating
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 0.16
+This documentation refers to C<Redis::JobQueue::Job> version 0.17
 
 =head1 SYNOPSIS
 
@@ -205,8 +305,7 @@ object:
         queue        => 'lovely_queue',
         job          => 'strong_job',
         expire       => 12*60*60,               # 12h
-        status       => 'created',
-        meta_data    => scalar( localtime ),
+        status       => STATUS_CREATED,
         workload     => \'Some stuff up to 512MB long',
         result       => \'JOB result comes here, up to 512MB long',
         };
@@ -217,7 +316,6 @@ object:
         job          => $pre_job->{job},
         expire       => $pre_job->{expire},
         status       => $pre_job->{status},
-        meta_data    => $pre_job->{meta_data},
         workload     => $pre_job->{workload},
         result       => $pre_job->{result},
         );
@@ -285,7 +383,7 @@ C<new> optionally takes arguments. These arguments are in key-value pairs.
 
 This example illustrates a C<new()> call with all the valid arguments:
 
-    Redis::JobQueue::Job->new(
+    $job = Redis::JobQueue::Job->new(
         id          => '4BE19672-C503-11E1-BF34-28791473A258',
                 # UUID string, using conventional UUID string format.
                 # Do not use it because filled in automatically when
@@ -297,15 +395,12 @@ This example illustrates a C<new()> call with all the valid arguments:
         expire      => 12*60*60,        # Job's time to live in seconds.
                                         # 0 for no expire time.
                                         # (required)
-        status      => '_created_',     # Current status of the job.
+        status      => STATUS_CREATED,  # Current status of the job.
                 # Do not use it because value should be set by the worker.
-        meta_data   => scalar( localtime ), # Job meta-data, such as custom
-                                        # attributes etc. (optional attribute)
         workload    => \'Some stuff up to 512MB long',
                 # Baseline data for the function of the worker
                 # (the function name specified in the 'job').
-                # For example, can be prepared by a function
-                # 'Storable::freeze'.
+                # Can be a scalar, an object or a reference to a scalar, hash, array
         result      => \'JOB result comes here, up to 512MB long',
                 # The result of the function of the worker
                 # (the function name specified in the 'job').
@@ -337,8 +432,6 @@ An error will cause the program to halt if the argument is not valid.
 
 =head3 C<status>
 
-=head3 C<meta_data>
-
 =head3 C<workload>
 
 =head3 C<result>
@@ -347,8 +440,8 @@ A family of methods for a multitude of accessor methods for your data with
 the appropriate names. These methods to read and assign the relevant attributes
 of the object.
 
-As attributes C<workload>, C<result> may contain a large amount of data,
-for them:
+As attributes C<workload>, C<result> may contain a large amount of data
+(scalars, references to arrays and hashes, objects), for them:
 
 =over 3
 
@@ -362,9 +455,83 @@ A write method can receive both data and a reference to the data.
 
 =back
 
+=head3 C<created>
+
+Returns time of job creation (UTC).
+Set to the current time (C<time>) when job is created.
+
+If necessary, alternative value can be set as:
+
+    $job->created( time );
+
+=head3 C<started>
+
+Returns the start time of job processing (UTC).
+Set to the current time (C<time>) when the L</status> of the job is set to L</STATUS_WORKING>.
+
+If necessary, you can set your own value, for example:
+
+    $job->started( time );
+
+=head3 C<updated>
+
+Returns the time (UTC) of the most recent modification of the job.
+
+Set to the current time (C<time>) when value(s) of any of the following data changes:
+L</status>, L</workload>, L</result>, L</progress>, L</message>, L</completed>.
+
+Can be updated manually:
+
+    $job->updated( time );
+
+=head3 C<completed>
+
+Returns the time (UTC) of the task completion.
+
+It is set to 0 when task is created.
+
+Set to C<time> when L</status> is changed to L</STATUS_COMPLETED> or to L</STATUS_FAILED>.
+
+Can be modified manually:
+
+    $job->completed( time );
+
+=head3 C<elapsed>
+
+Returns the time of the job (in seconds) since its start processing (see L</started>)
+or to the current time.
+Returns C<undef> if time of start processing was set to 0.
+
+=head3 C<meta_data>
+
+With no arguments, returns a reference to a hash of metadata (additional information related to the job.).
+For example:
+
+    my $md = $job->meta_data;
+
+Group metadata can be specified by reference to a hash.
+Metadata may contain scalars, references to arrays and hashes, objects.
+For example:
+
+    $job->meta_data( {
+        'foo'   => 12,
+        'bar'   => [ 13, 14, 15 ],
+        'other' => { a => 'b', c => 'd' },
+        } );
+
+Hash value of an individual item metadata available by specifying the name the hash key.
+For example:
+
+    my $foo = $job->meta_data( 'foo' );
+
+Separate metadata value can be set as follows:
+
+    my $foo = $job->meta_data( next => 16 );
+
 =head3 C<clear_variability( @fields )>
 
 Resets the sign of changing attributes.
+If unset the attribute names, the signs are reset for all attributes.
 
 =head3 C<modified_attributes>
 
@@ -385,12 +552,26 @@ These are the defaults:
 
 =over
 
-=item C<Redis::JobQueue::Job::MAX_DATASIZE>
+=item C<STATUS_CREATED>
 
-Maximum size of the data provided by data on the references C<workload>,
-C<result>: 512MB.
+Initial status of the job, showing that it was created.
+
+=item C<STATUS_WORKING>
+
+Jobs is being executed. Set by the worker function.
+
+=item C<STATUS_COMPLETED>
+
+Job is completed. Set by the worker function.
+
+=item C<STATUS_FAILED>
+
+Job is failed. Set by the worker function.
 
 =back
+
+User himself should specify the status L</ STATUS_WORKING>, L</ STATUS_COMPLETED>, L</ STATUS_FAILED>
+or own during processing job.
 
 =head2 DIAGNOSTICS
 
@@ -409,6 +590,11 @@ creating and manipulating.
 
 L<Redis|Redis> - Perl binding for Redis database.
 
+=head1 SOURCE CODE
+
+Redis::JobQueue is hosted on GitHub:
+L<https://github.com/TrackingSoft/Redis-JobQueue>
+
 =head1 AUTHOR
 
 Sergey Gladkov, E<lt>sgladkov@trackingsoft.comE<gt>
@@ -424,7 +610,6 @@ Vlad Marchenko
 =head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2012-2013 by TrackingSoft LLC.
-All rights reserved.
 
 This package is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself. See I<perlartistic> at

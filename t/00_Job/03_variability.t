@@ -6,7 +6,8 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 19;
+use Test::More tests => 31;
+use Test::NoWarnings;
 
 use Redis::JobQueue::Job;
 
@@ -20,6 +21,12 @@ my @job_fields = qw(
     meta_data
     workload
     result
+    progress
+    message
+    created
+    started
+    updated
+    completed
     );
 
 my $pre_job = {
@@ -28,7 +35,6 @@ my $pre_job = {
     job         => 'strong_job',
     expire      => 12*60*60,
     status      => 'created',
-    meta_data   => scalar( localtime ),
     workload    => \'Some stuff up to 512MB long',
     result      => \'JOB result comes here, up to 512MB long',
     };
@@ -53,13 +59,26 @@ foreach my $field ( @job_fields )
 $fields = 0;
 foreach my $field ( @job_fields )
 {
-    if ( $field =~ /workload|result/ )
+    $job->clear_variability;
+    if ( $field =~ /^workload|^result/ )
     {
         $job->$field( scalar reverse ${$job->$field} );
     }
-    elsif ( $field =~ /expire/ )
+    elsif ( $field =~ /^expire|^created|^started|^updated|^completed/ )
     {
-        $job->$field( $job->$field + 1 );
+        $job->$field( ( $job->$field // 0 ) + 1 );
+    }
+    elsif ( $field =~ /^progress/ )
+    {
+        $job->$field( $job->$field + 0.01 );
+    }
+    elsif ( $field =~ /^message/ )
+    {
+        $job->$field( 'Any message' );
+    }
+    elsif ( $field =~ /^meta_data/ )
+    {
+        next;
     }
     else
     {
@@ -68,7 +87,7 @@ foreach my $field ( @job_fields )
 
     my @modified = $job->modified_attributes;
     my $modified = scalar @modified;
-    is $modified, ++$fields, "modified fields: @modified";
+    is $modified, 1 + ( $field =~ /^status|^meta_data|^workload|^result|^progress|^message|^started|^completed/ ? 1 : 0 ), "modified fields ($field): @modified";
 }
 
 $job->clear_variability( @job_fields );

@@ -8,6 +8,7 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
+use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -28,9 +29,13 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    );
+
+use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
     STATUS_COMPLETED
+    STATUS_FAILED
     );
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
@@ -75,8 +80,7 @@ my $pre_job = {
     queue        => 'lovely_queue',
     job          => 'strong_job',
     expire       => 30,
-    status       => 'created',
-    meta_data    => scalar( localtime ),
+    status       => STATUS_CREATED,
     workload     => \'Some stuff up to 512MB long',
     result       => \'JOB result comes here, up to 512MB long',
     };
@@ -105,27 +109,6 @@ foreach my $arg ( ( undef, "", \"scalar", [] ) )
 }
 
 is $jq->get_job_status( "something wrong" ), undef, "job does not exist";
-
-$jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
-
-#-- get_job_status -------------------------------------------------------------
-
-$job = $jq->add_job(
-    $pre_job,
-    );
-isa_ok( $job, 'Redis::JobQueue::Job');
-
-is $jq->get_job_meta_data( $job ), $pre_job->{meta_data}, "attribute OK";
-is $jq->get_job_meta_data( $job->id ), $pre_job->{meta_data}, "attribute OK";
-
-dies_ok { $jq->get_job_meta_data() } "expecting to die - no arguments";
-
-foreach my $arg ( ( undef, "", \"scalar", [] ) )
-{
-    dies_ok { $jq->get_job_meta_data( $arg ) } "expecting to die: ".( $arg || "" );
-}
-
-is $jq->get_job_meta_data( "something wrong" ), undef, "job does not exist";
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 
