@@ -456,7 +456,7 @@ sub get_next_job {
         }
         else
         {
-# 'LPOP' takes only one queue name at ones
+# 'LPOP' takes only one queue name at a time
             foreach my $key ( @keys )
             {
                 next unless $self->_call_redis( 'EXISTS', $key );
@@ -494,7 +494,7 @@ sub _get_next_job {
             $self->_set_last_errorcode( EJOBDELETED );
             confess $id.' '.$ERROR[ EJOBDELETED ];
         }
-# If the queue contains the job identifier has already been removed due
+# If the queue contains a job identifier that has already been removed due
 # to expiration of the 'expire' time, the cycle will ensure the transition
 # to the next job ID selection
         return;
@@ -558,9 +558,9 @@ sub delete_job {
 
     my $key = $self->_jkey( ref( $arg ) ? $arg->id : $arg );
 
-    # 'delete_job' removes job's data structure but doesn't remove its id from Redis list structure,
+    # 'delete_job' removes the job's data structure but doesn't remove its id from Redis list structure,
     # as it's only used to store the order in which jobs were placed in to the queue.
-    # If the queue contains the job identifier that has already been removed,
+    # If the queue contains a job identifier that has already been removed,
     # 'get_next_job' will cycle to the next job ID selection.
 
     return
@@ -676,7 +676,7 @@ sub quit {
         if $@;
 }
 
-# Statistics based on the jobs that have not yet removed
+# Statistics based on the jobs that have not yet been removed
 sub queue_status {
     my $self        = shift;
     my $arg         = shift;
@@ -738,7 +738,7 @@ sub queue_status {
             $qstatus->{max_job_age} = $tm - $qstatus->{max_job_age};
 # The age of the younger job
             $qstatus->{min_job_age} = $tm - $qstatus->{min_job_age};
-# Duration of of activity queue (the period during which created new job)
+# Duration of queue activity (the period during which new jobs were created)
             $qstatus->{lifetime} = $qstatus->{max_job_age} - $qstatus->{min_job_age};
         }
     }
@@ -850,7 +850,7 @@ sub _call_redis {
     }
     elsif ( $method eq 'HSET' and !$self->_redis->{encoding} and utf8::is_utf8( $_[2] ) )
     {
-        # For non-serialized fields: UTF8 can not be transferred to the server Redis in mode of 'encoding => undef'
+        # For non-serialized fields: UTF8 can not be transferred to the Redis server in mode of 'encoding => undef'
         $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ]." (utf8 in $_[1])";
     }
     else
@@ -885,7 +885,7 @@ sub _call_redis_ref
     return wantarray ? \( @result ) : ref( $result[0] ) ? $result[0] : \$result[0];
 }
 
-# Jobs data are loaded and for a specified job updates the value of the EXPIRE
+# Jobs data is loaded and  the value of EXPIRE is updated for the specified job
 sub _reexpire_load_job {
     my $self        = shift;
     my $id          = shift;
@@ -991,7 +991,7 @@ This documentation refers to C<Redis::JobQueue> version 0.17
 
     if ( $status eq 'completed' )
     {
-        # now safe it from JobQueue, since it's completed
+        # it is now safe to remove it from JobQueue, since it's completed
         my $job = $jq->load_job( $id );
 
         $jq->delete_job( $id );
@@ -1037,13 +1037,13 @@ Support the work with data structures on the Redis server.
 
 =item *
 
-Supports the automatic creation of job queue, job status monitoring,
+Supports the automatic creation of job queues, job status monitoring,
 updating the job data set, obtaining a consistent job from the queue,
-remove job, the classification of possible errors.
+removing jobs, and the classification of possible errors.
 
 =item *
 
-Simple methods for organizing producer, worker and consumer clients.
+Simple methods for organizing producer, worker, and consumer clients.
 
 =back
 
@@ -1057,12 +1057,11 @@ If invoked with no arguments the constructor C<new> creates and returns
 a C<Redis::JobQueue> object that is configured
 to work with the default settings.
 
-If invoked with the first argument being an object of C<Redis::JobQueue>
-class or L<Redis|Redis> class, then the new object attribute values are taken from
-the object of the first argument. It does not create a new connection to
-the Redis server.
+If invoked with an object of C<Redis::JobQueue> class or L<Redis|Redis> class as
+the first argument, the new object's attribute values are taken from the object
+passed as the first argument.  It does not create a new connection to the Redis server.
 
-Since L<Redis|Redis> knows nothing about encoding, it is forcing utf-8 flag
+Since L<Redis|Redis> knows nothing about encoding, it forces a utf-8 flag
 on all data by default.
 If you want to store binary data in your job,
 you can disable automatic encoding by passing an option to
@@ -1071,13 +1070,13 @@ L<Redis|Redis> C<new>: C<encoding =E<gt> undef>.
 Note that for non-serialized fields UTF-8 can not be transferred to the server
 L<Redis|Redis> in mode of C<encoding =E<gt> undef>.
 
-C<encoding => undef> for the L<Redis|Redis> used, if C<new> invoked without
+C<encoding => undef> for the L<Redis|Redis> is used, if C<new> is invoked without
 the first argument being an object of C<Redis::JobQueue>
 class or L<Redis|Redis> class.
 
-A created object uses the default value L</DEFAULT_TIMEOUT> when
+A created object uses the L</DEFAULT_TIMEOUT> value when
 a L<Redis|Redis> class object is passed to the C<new> constructor,
-as L<Redis|Redis> class does not support the timeout attribute while waiting for
+as the L<Redis|Redis> class does not support the timeout attribute while waiting for
 a message from the queue.
 
 C<new> optionally takes arguments. These arguments are in key-value pairs.
@@ -1113,7 +1112,7 @@ exception on receipt of an error reply, or return a non-error reply directly.
 
 =head3 C<add_job( $job_data, LPUSH =E<gt> 1 )>
 
-Adds job to the queue on the Redis server.
+Adds a job to the queue on the Redis server.
 
 The first argument should be an L<Redis::JobQueue::Job|Redis::JobQueue::Job>
 object or a reference to a hash describing L<Redis::JobQueue::Job|Redis::JobQueue::Job>
@@ -1122,7 +1121,7 @@ object attributes.
 Creates a new L<Redis::JobQueue::Job|Redis::JobQueue::Job> object
 if the first argument is a reference to a hash describing
 L<Redis::JobQueue::Job|Redis::JobQueue::Job> object attributes.
-Updates to L<Redis::JobQueue::Job|Redis::JobQueue::Job> object,
+Updates the L<Redis::JobQueue::Job|Redis::JobQueue::Job> object,
 if it was passed as the first argument.
 
 Returns a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object with a new
@@ -1153,19 +1152,19 @@ This example illustrates a C<add_job()> call with all the valid arguments:
         LPUSH       => 1,
         );
 
-If used with an optional argument C<LPUSH> => 1, the job is placed in front of
-the queue and will be returned by next call to get_next_job.
+If used with the optional argument C<LPUSH> => 1, the job is placed at the front of
+the queue and will be returned by the next call to get_next_job.
 
 TTL of job data on Redis server is sets in accordance with the C<expire>
 attribute of the L<Redis::JobQueue::Job|Redis::JobQueue::Job> object. Make
-sure it's higher than time needed to process other jobs in the queue.
+sure it's higher than the time needed to process the other jobs in the queue.
 
-Method returns the object representing added job.
+Method returns the object representing the added job.
 
 =head3 C<get_job_status( $job )>
 
-Status of the job is requested from the Redis server. Job ID is obtained from
-the argument. The argument can be either a string or
+Status of the job is requested from the Redis server. The requested job ID is obtained from
+the argument, which can be either a string or
 a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
 Returns the status string or C<undef> when the job data does not exist or job
@@ -1180,39 +1179,39 @@ The following examples illustrate uses of the C<get_job_status> method:
 
 =head3 C<get_job_created( $job )>
 
-Works similarly to L</get_job_status>, but with the value of L<created|Redis::JobQueue::Job/created>.
+Works similarly to L</get_job_status>, but returns the value of the job L<created|Redis::JobQueue::Job/created> attribute.
 
 =head3 C<get_job_started( $job )>
 
-Works similarly to L</get_job_status>, but with the value of L<started|Redis::JobQueue::Job/started>.
+Works similarly to L</get_job_status>, but returns the value of the job L<started|Redis::JobQueue::Job/started> attribute.
 
 =head3 C<get_job_updated( $job )>
 
-Works similarly to L</get_job_status>, but with the value of L<updated|Redis::JobQueue::Job/updated>.
+Works similarly to L</get_job_status>, but returns the value of the job L<updated|Redis::JobQueue::Job/updated> attribute.
 
 =head3 C<get_job_completed( $job )>
 
-Works similarly to L</get_job_status>, but with the value of L<completed|Redis::JobQueue::Job/completed>.
+Works similarly to L</get_job_status>, but returns the value of the job L<completed|Redis::JobQueue::Job/completed> attribute.
 
 =head3 C<get_job_elapsed( $job )>
 
-Works similarly to L</get_job_status>, but with the value of L<elapsed|Redis::JobQueue::Job/elapsed>.
+Works similarly to L</get_job_status>, but returns the value of the job L<elapsed|Redis::JobQueue::Job/elapsed> attribute.
 
 =head3 C<get_job_message( $job )>
 
-Works similarly to L</get_job_status>, but with the value of L<message|Redis::JobQueue::Job/message>.
+Works similarly to L</get_job_status>, but returns the value of the job L<message|Redis::JobQueue::Job/message> attribute.
 
 =head3 C<get_job_progress( $job )>
 
-Works similarly to L</get_job_status>, but with the value of L<progress|Redis::JobQueue::Job/progress>.
+Works similarly to L</get_job_status>, but returns the value of the job L<progress|Redis::JobQueue::Job/progress> attribute.
 
 =head3 C<get_job_meta_data( $job, $meta_data_key )>
 
 The method returns a reference to a hash of the jobs metadata from the Redis server.
-Job ID is obtained from the argument. The argument can be either a string or
+The requested job ID is obtained from the argument, which can be either a string or
 a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
-If we are given a key name C<$meta_data_key>, it returns data corresponding to
+If given a key name C<$meta_data_key>, it returns data corresponding to
 the key or C<undef> when the value is undefined or key is not in the metadata.
 
 Returns C<undef> if the job is not on the Redis server.
@@ -1230,8 +1229,8 @@ the jobs metadata.
 
 =head3 C<load_job( $job )>
 
-Jobs data are loaded from the Redis server. Job ID is obtained from
-the argument. The argument can be either a string or
+Loads job data from the Redis server. The requested job ID is
+obtained from the argument, which can be either a string or
 a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
 Method returns the object corresponding to the loaded job.
@@ -1248,22 +1247,21 @@ The following examples illustrate uses of the C<load_job> method:
 Selects the first job identifier in the queue.
 
 C<get_next_job> takes arguments in key-value pairs.
-You can specify a queue name or a reference to an array of names of queues.
+You can specify a queue name or a reference to an array of queue names.
 Queues from the list are processed in random order.
 
-If the optional C<blocking> argument is true, then the C<get_next_job> method
+By default, each queue is processed in a separate request with the result
+returned immediately.
+If the optional C<blocking> argument is true, then all queues are processed in
+a single request to Redis server.  Additionally, the C<get_next_job> method
 waits for a maximum period of time specified in the C<timeout> attribute of
 the queue object. Use C<timeout> = 0 for an unlimited wait time.
-By default, the result is returned immediately.
-If the optional C<blocking> argument is true, then all queues are processed in
-a single request to Redis server; otherwise, each queue is processed in
-a separate request.
 Default - C<blocking> is false (0).
 
 Method returns the job object corresponding to the received job identifier.
 Returns the C<undef> if there is no job in the queue.
 
-These examples illustrates a C<get_next_job> call with all the valid arguments:
+These examples illustrate a C<get_next_job> call with all the valid arguments:
 
     $job = $jq->get_next_job(
         queue       => 'xxx',
@@ -1280,12 +1278,12 @@ the C<expire> attribute of the job object.
 
 =head3 C<update_job( $job )>
 
-Saves the changes to the job data to the Redis server. Job ID is obtained from
-the argument. The argument can be a L<Redis::JobQueue::Job|Redis::JobQueue::Job>
+Saves job data changes to the Redis server. Job ID is obtained from
+the argument, which can be a L<Redis::JobQueue::Job|Redis::JobQueue::Job>
 object.
 
-Returns C<undef> if the job is not on the Redis server and the number of
-the attributes that were updated in the opposite case.
+Returns the number of attributes that were updated if the job was on the Redis
+server and C<undef> it if was not.
 When you change a single attribute, returns C<2> because L</updated> also changes.
 
 Changing the C<expire> attribute is ignored.
@@ -1299,8 +1297,8 @@ the C<expire> attribute of the job object.
 
 =head3 C<delete_job( $job )>
 
-Deletes the job data in Redis server. Job ID is obtained from
-the argument. The argument can be either a string or
+Deletes the job data in Redis server. The Job ID is obtained from
+the argument, which can be either a string or
 a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
 Returns C<undef> if the job is not on the Redis server and true in the opposite
@@ -1315,14 +1313,14 @@ The following examples illustrate uses of the C<delete_job> method:
 Use this method immediately after receiving the results of the job for
 the early release of memory on the Redis server.
 
-To see a description of the used C<Redis::JobQueue> data
-structure (on Redis server) look at the L</"JobQueue data structure"> section.
+To see a description of the C<Redis::JobQueue> data
+structure used on the Redis server look at the L</"JobQueue data structure"> section.
 
 =head3 C<get_job_ids>
 
 Gets a list of job IDs on the Redis server.
-These IDs are identifiers of jobs data structures, not only the identifiers of which
-has not get derived from the queue by L</get_next_job>.
+These IDs are identifiers of job data structures, not only the identifiers which
+get derived from the queue by L</get_next_job>.
 
 The following examples illustrate simple uses of the C<get_job_ids> method
 (IDs of all existing jobs):
@@ -1333,18 +1331,18 @@ These are identifiers of jobs data structures related to the queue
 determined by the arguments.
 
 C<get_job_ids> takes arguments in key-value pairs.
-You can specify a queue name or a status
-(or a reference to an array of names of queues or values of status)
+You can specify a queue name or job status
+(or a reference to an array of queue names or job statuses)
 to filter the list of identifiers.
 
 You can also specify an argument C<queued> (true or false).
 
-When filtering by the names of the queues and the true meaning of C<queued>,
-returns only the identifiers of which
-has not get derived from the queues by L</get_next_job> yet.
+When filtering by the names of the queues and C<queued> is set to true,
+only the identifiers of the jobs which have not yet been derived from
+the queues using L</get_next_job> are returned.
 
-If you filter by status, the returned tasks IDs whose status is exactly the same
-with the specified status.
+Filtering by status returns the task IDs whose status is exactly the same
+as the specified status.
 
 The following examples illustrate uses of the C<get_job_ids> method:
 
@@ -1420,24 +1418,24 @@ Queue length.
 =item *
 
 The number of jobs on a server belonging to the analyzed queue
-(waiting to get by L</get_next_job>, and already received and not yet removed).
+(waiting to selected by L</get_next_job>, and already received and not yet removed).
 
 =item *
 
-The age of the old job (the lifetime of the queue).
+The age of the oldest job (the lifetime of the queue).
 
 =item *
 
-The age of the younger job.
+The age of the youngest job.
 
 =item *
 
-Duration of of activity queue (the period during which created new job).
+Duration of queue activity (the period during which new jobs were created).
 
 =back
 
-Statistics based on the jobs that have not yet removed.
-Some fields may be missing if the status of the job is not allows to determine
+Statistics based on the jobs that have not yet been removed.
+Some fields may be missing if the status of the job prevents determining
 the desired information (eg, there are no jobs in the queue).
 
 =head3 C<timeout>
@@ -1447,7 +1445,7 @@ The method of access to the C<timeout> attribute.
 The method returns the current value of the attribute if called without arguments.
 
 Non-negative integer value can be used to specify a new value of the maximum
-waiting time data from the queue (in the L</get_next_job> method). Use
+waiting time for queue (of the L</get_next_job> method). Use
 C<timeout> = 0 for an unlimited wait time.
 
 =head3 C<max_datasize>
@@ -1456,25 +1454,25 @@ The method of access to the C<max_datasize> attribute.
 
 The method returns the current value of the attribute if called without arguments.
 
-Non-negative integer value can be used to specify a new value to the maximum
+Non-negative integer value can be used to specify a new value for the maximum
 size of data in the attributes of a
 L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
-The check is done before sending data to module L<Redis|Redis>,
+The check is done before sending data to the module L<Redis|Redis>,
 after possible processing by methods of module L<Storable|Storable>
 (attributes L<workload|Redis::JobQueue::Job/workload>, L<result|Redis::JobQueue::Job/result>
 and L<meta_data|Redis::JobQueue::Job/meta_data>).
-It automatically serialized.
+It is automatically serialized.
 
 The C<max_datasize> attribute value is used in the L<constructor|/CONSTRUCTOR>
-and operations data entry jobs on the Redis server.
+and data entry job operations on the Redis server.
 
 The L<constructor|/CONSTRUCTOR> uses the smaller of the values of 512MB and
 C<maxmemory> limit from a C<redis.conf> file.
 
 =head3 C<last_errorcode>
 
-The method of access to the code of the last identified errors.
+The method of access to the code of the last identified error.
 
 To see more description of the identified errors look at the L</DIAGNOSTICS>
 section.
@@ -1509,11 +1507,11 @@ Maximum wait time (in seconds) you receive a message from the queue -
 
 =item C<NAMESPACE>
 
-Namespace name used keys on the Redis server - C<'JobQueue'>.
+Namespace name used for keys on the Redis server - C<'JobQueue'>.
 
 =item C<NS_METADATA_SUFFIX>
 
-Namespace name suffix used metadata keys on the Redis server - C<'M'>.
+Namespace name suffix used for metadata keys on the Redis server - C<'M'>.
 
 =item Error codes are identified
 
@@ -1524,7 +1522,7 @@ section.
 
 =head2 DIAGNOSTICS
 
-The method for the possible error to analyse: L</last_errorcode>.
+The method to retrieve a possible error for analysis is: L</last_errorcode>.
 
 A L<Redis|Redis> error will cause the program to halt (C<confess>).
 In addition to errors in the L<Redis|Redis> module detected errors
@@ -1573,7 +1571,7 @@ Error connecting to Redis server.
 
 =item C<EMAXMEMORYLIMIT>
 
-Command failed cause it requires more than allowed memory, set in C<maxmemory>.
+Command failed because it requires more than allowed memory, set in C<maxmemory>.
 
 =item C<EJOBDELETED>
 
@@ -1587,7 +1585,7 @@ This means that other Redis error message detected.
 
 =head2 An Example
 
-The example shows a possible treatment for possible errors.
+This example shows a possible treatment for possible errors.
 
     #-- Common ---------------------------------------------------------------
     use Redis::JobQueue qw(
@@ -1884,7 +1882,7 @@ For example:
     #                                      Expire time (UTC)
     ...
 
-Job queue will be created automatically when the data arrives to contain.
+Job queue will be created automatically when data arrives to be contained.
 Job queue will be deleted automatically in the exhaustion of its contents.
 
 =head1 DEPENDENCIES
@@ -1939,11 +1937,11 @@ All modules contain detailed information on the interfaces they provide.
 
 The basic operation of the C<Redis::JobQueue> package modules:
 
-L<Redis::JobQueue|Redis::JobQueue> - Object interface for creating,
+L<Redis::JobQueue|Redis::JobQueue> - Object interface for creating and
 executing jobs queues, as well as monitoring the status and results of jobs.
 
-L<Redis::JobQueue::Job|Redis::JobQueue::Job> - Object interface for jobs
-creating and manipulating.
+L<Redis::JobQueue::Job|Redis::JobQueue::Job> - Object interface for creating
+and manipulating jobs.
 
 L<Redis|Redis> - Perl binding for Redis database.
 

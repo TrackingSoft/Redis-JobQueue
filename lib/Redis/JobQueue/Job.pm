@@ -289,7 +289,7 @@ __END__
 
 =head1 NAME
 
-Redis::JobQueue::Job - Object interface for jobs creating and manipulating
+Redis::JobQueue::Job - Object interface for creating and manipulating jobs
 
 =head1 VERSION
 
@@ -400,7 +400,7 @@ This example illustrates a C<new()> call with all the valid arguments:
         workload    => \'Some stuff up to 512MB long',
                 # Baseline data for the function of the worker
                 # (the function name specified in the 'job').
-                # Can be a scalar, an object or a reference to a scalar, hash, array
+                # Can be a scalar, an object or a reference to a scalar, hash, or array
         result      => \'JOB result comes here, up to 512MB long',
                 # The result of the function of the worker
                 # (the function name specified in the 'job').
@@ -409,9 +409,9 @@ This example illustrates a C<new()> call with all the valid arguments:
 
 Returns the object itself, we can chain settings.
 
-As attributes C<workload>, C<result> may contain a large amount of data,
-therefore, to improve performance, it is desirable that they be passed
-as references to the actual data.
+The attributes C<workload> and C<result> may contain a large amount of data,
+therefore, it is desirable that they be passed as references to the actual
+data to improve performance.
 
 Do not use spaces in an C<id> attribute value.
 
@@ -436,12 +436,12 @@ An error will cause the program to halt if the argument is not valid.
 
 =head3 C<result>
 
-A family of methods for a multitude of accessor methods for your data with
-the appropriate names. These methods to read and assign the relevant attributes
-of the object.
+The family of methods for a multitude of accessor methods for your data with
+the appropriate names. These methods are able to read and assign the relevant
+attributes of the object.
 
-As attributes C<workload>, C<result> may contain a large amount of data
-(scalars, references to arrays and hashes, objects), for them:
+As attributes C<workload> and C<result> may contain a large amount of data
+(scalars, references to arrays and hashes, objects):
 
 =over 3
 
@@ -451,13 +451,13 @@ A read method returns a reference to the data.
 
 =item *
 
-A write method can receive both data and a reference to the data.
+A write method can receive both data or a reference to the data.
 
 =back
 
 =head3 C<created>
 
-Returns time of job creation (UTC).
+Returns time (UTC) of job creation.
 Set to the current time (C<time>) when job is created.
 
 If necessary, alternative value can be set as:
@@ -466,7 +466,7 @@ If necessary, alternative value can be set as:
 
 =head3 C<started>
 
-Returns the start time of job processing (UTC).
+Returns the time (UTC) that the job started processing.
 Set to the current time (C<time>) when the L</status> of the job is set to L</STATUS_WORKING>.
 
 If necessary, you can set your own value, for example:
@@ -498,16 +498,25 @@ Can be modified manually:
 
 =head3 C<elapsed>
 
-Returns the time of the job (in seconds) since its start processing (see L</started>)
-or to the current time.
-Returns C<undef> if time of start processing was set to 0.
+Returns the time (in seconds) since the job started processing (see L</started>)
+to the current time.
+Returns C<undef> if the start processing time was set to 0.
 
 =head3 C<meta_data>
 
-With no arguments, returns a reference to a hash of metadata (additional information related to the job.).
+With no arguments, returns a reference to a hash of metadata (additional information related to the job).
 For example:
 
     my $md = $job->meta_data;
+
+Hash value of an individual item metadata is available by specifying the name of the hash key.
+For example:
+
+    my $foo = $job->meta_data( 'foo' );
+
+Separate metadata value can be set as follows:
+
+    my $foo = $job->meta_data( next => 16 );
 
 Group metadata can be specified by reference to a hash.
 Metadata may contain scalars, references to arrays and hashes, objects.
@@ -519,23 +528,14 @@ For example:
         'other' => { a => 'b', c => 'd' },
         } );
 
-Hash value of an individual item metadata available by specifying the name the hash key.
-For example:
-
-    my $foo = $job->meta_data( 'foo' );
-
-Separate metadata value can be set as follows:
-
-    my $foo = $job->meta_data( next => 16 );
-
 =head3 C<clear_variability( @fields )>
 
-Resets the sign of changing attributes.
-If unset the attribute names, the signs are reset for all attributes.
+Resets the sign of any specified attributes that have been changed.
+If no attribute names are specified, the signs are reset for all attributes.
 
 =head3 C<modified_attributes>
 
-Returns a list of names of the modified object fields.
+Returns a list of names of the object attributes that have been modified.
 
 =head3 C<job_attributes>
 
@@ -566,27 +566,27 @@ Job is completed. Set by the worker function.
 
 =item C<STATUS_FAILED>
 
-Job is failed. Set by the worker function.
+Job has failed. Set by the worker function.
 
 =back
 
 User himself should specify the status L</ STATUS_WORKING>, L</ STATUS_COMPLETED>, L</ STATUS_FAILED>
-or own during processing job.
+or own status when processing the job.
 
 =head2 DIAGNOSTICS
 
-An error will cause the program to halt (C<confess>) if the argument
+An error will cause the program to halt (C<confess>) if an argument
 is not valid. Use C<$@> for the analysis of the specific reasons.
 
 =head1 SEE ALSO
 
 The basic operation of the L<Redis::JobQueue|Redis::JobQueue> package modules:
 
-L<Redis::JobQueue|Redis::JobQueue> - Object interface for creating,
+L<Redis::JobQueue|Redis::JobQueue> - Object interface for creating and
 executing jobs queues, as well as monitoring the status and results of jobs.
 
-L<Redis::JobQueue::Job|Redis::JobQueue::Job> - Object interface for jobs
-creating and manipulating.
+L<Redis::JobQueue::Job|Redis::JobQueue::Job> - Object interface for creating
+and manipulating jobs.
 
 L<Redis|Redis> - Perl binding for Redis database.
 
