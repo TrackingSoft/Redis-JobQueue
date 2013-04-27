@@ -703,52 +703,46 @@ sub queue_status {
         }
     }
 
+    return unless $queue;
+
     my $qstatus     = {};
-    if ( $queue )
+    my $qkey        = $self->_qkey( $queue );
+    my $tm          = time;
+
+    # Queue length
+    if ( $qstatus->{length} = $self->_call_redis( 'LLEN', $qkey ) )
     {
-        my $qkey        = $self->_qkey( $queue );
-        my $lifetime    = 0;
-        my $tm          = time;
-
-# Queue length
-        if ( $qstatus->{length} = $self->_call_redis( 'LLEN', $qkey ) )
+        # jobs in the active queue
+        foreach my $full_id ( $self->_call_redis( 'LRANGE', $qkey, 0, -1 ) )
         {
-            # job in the queue
-            foreach my $full_id ( $self->_call_redis( 'LRANGE', $qkey, 0, -1 ) )
+            my ( $id, undef ) = split ' ', $full_id;
+            my $jkey = $self->_jkey( $id );
+
+            if ( my $created = $self->_call_redis( 'HGET', $jkey, 'created' ) )
             {
-                my ( $id, undef ) = split ' ', $full_id;
-                my $jkey = $self->_jkey( $id );
-
-                if ( my $created = $self->_call_redis( 'HGET', $jkey, 'created' ) )
-                {
-                    $lifetime += $tm - $created;
-
-                    $qstatus->{max_job_age} = $created  # time of birth
-                        if !$qstatus->{max_job_age} or $created < $qstatus->{max_job_age};
-                    $qstatus->{min_job_age} = $created  # time of birth
-                        if !$qstatus->{min_job_age} or $created > $qstatus->{min_job_age};
-                }
+                $qstatus->{max_job_age} = $created  # time of birth
+                    if !$qstatus->{max_job_age} or $created < $qstatus->{max_job_age};
+                $qstatus->{min_job_age} = $created  # time of birth
+                    if !$qstatus->{min_job_age} or $created > $qstatus->{min_job_age};
             }
         }
-
-        # time of birth -> age
-        if ( $qstatus->{max_job_age} )              # $qstatus->{min_job_age} also != 0
-        {
-# The age of the old job (the lifetime of the queue)
-            $qstatus->{max_job_age} = $tm - $qstatus->{max_job_age};
-# The age of the younger job
-            $qstatus->{min_job_age} = $tm - $qstatus->{min_job_age};
-# Duration of queue activity (the period during which new jobs were created)
-            $qstatus->{lifetime} = $qstatus->{max_job_age} - $qstatus->{min_job_age};
-        }
     }
 
-    # all jobs
-    foreach my $id ( $self->get_job_ids )
+    # time of birth -> age
+    if ( $qstatus->{max_job_age} )              # $qstatus->{min_job_age} also != 0
     {
-# All jobs
-        ++$qstatus->{all_job} if $self->_call_redis( 'HGET', $self->_jkey( $id ), 'queue' ) eq $queue;
+        # The age of the old job (the lifetime of the queue)
+        $qstatus->{max_job_age} = $tm - $qstatus->{max_job_age};
+
+        # The age of the younger job
+        $qstatus->{min_job_age} = $tm - $qstatus->{min_job_age};
+
+        # Duration of queue activity (the period during which new jobs were created)
+        $qstatus->{lifetime} = $qstatus->{max_job_age} - $qstatus->{min_job_age};
     }
+
+   # all jobs in the queue, including inactive ones
+   $qstatus->{all_jobs} = scalar $self->get_job_ids( queue => $queue );
 
     return $qstatus;
 }
@@ -1005,19 +999,15 @@ This documentation refers to C<Redis::JobQueue> version 0.17
 To see a brief but working code example of the C<Redis::JobQueue>
 package usage look at the L</"An Example"> section.
 
-To see a description of the used C<Redis::JobQueue> data
-structure (on Redis server) look at the L</"JobQueue data structure"> section.
+Description of the used by C<Redis::JobQueue> data
+structures (on Redis server) is provided in L</"JobQueue data structure"> section.
 
 =head1 ABSTRACT
 
 The C<Redis::JobQueue> package is a set of Perl modules which
-provides a simple job queue with Redis server capabilities.
+allows creation of a simple job queue based on Redis server capabilities.
 
 =head1 DESCRIPTION
-
-The user modules in this package provide an object oriented API.
-The job queues interface and the jobs are all represented by objects.
-This makes a simple and powerful interface to these services.
 
 The main features of the package are:
 
@@ -1025,21 +1015,21 @@ The main features of the package are:
 
 =item *
 
+Supports the automatic creation of job queues, job status monitoring,
+updating the job data set, obtaining a consistent job from the queue,
+removing jobs, and the classification of possible errors.
+
+=item *
+
 Contains various reusable components that can be used separately or together.
 
 =item *
 
-Provides an object oriented model of communication.
+Provides an object oriented API.
 
 =item *
 
-Support the work with data structures on the Redis server.
-
-=item *
-
-Supports the automatic creation of job queues, job status monitoring,
-updating the job data set, obtaining a consistent job from the queue,
-removing jobs, and the classification of possible errors.
+Support of storing arbitrary job-related data structures.
 
 =item *
 
@@ -1051,35 +1041,35 @@ Simple methods for organizing producer, worker, and consumer clients.
 
 =head3 C<new( redis =E<gt> $server, timeout =E<gt> $timeout )>
 
-It generates a C<Redis::JobQueue> object to communicate with
-the Redis server and can be called as either a class method or an object method.
-If invoked with no arguments the constructor C<new> creates and returns
-a C<Redis::JobQueue> object that is configured
-to work with the default settings.
+Created a new C<Redis::JobQueue> object to communicate with
+the Redis server.
+If invoked without any arguments, the constructor C<new> creates and returns
+a C<Redis::JobQueue> object that is configured with the default settings and uses
+local C<redis> server.
 
-If invoked with an object of C<Redis::JobQueue> class or L<Redis|Redis> class as
-the first argument, the new object's attribute values are taken from the object
-passed as the first argument.  It does not create a new connection to the Redis server.
+Caveats related to connection with Redis server
+
+=item *
 
 Since L<Redis|Redis> knows nothing about encoding, it forces a utf-8 flag
-on all data by default.
-If you want to store binary data in your job,
+on all data by default. If you want to store binary data in your job,
 you can disable automatic encoding by passing an option to
 L<Redis|Redis> C<new>: C<encoding =E<gt> undef>.
 
-Note that for non-serialized fields UTF-8 can not be transferred to the server
-L<Redis|Redis> in mode of C<encoding =E<gt> undef>.
+=item *
 
-C<encoding => undef> for the L<Redis|Redis> is used, if C<new> is invoked without
-the first argument being an object of C<Redis::JobQueue>
-class or L<Redis|Redis> class.
+When Redis connection is establed with C<encoding =E<gt> undef>, non-serialize-able
+fields (like status or message) passed in UTF-8 can not be transferred
+correctly to the L<Redis|Redis> server.
 
-A created object uses the L</DEFAULT_TIMEOUT> value when
-a L<Redis|Redis> class object is passed to the C<new> constructor,
-as the L<Redis|Redis> class does not support the timeout attribute while waiting for
-a message from the queue.
+=item *
+By default C<Redis::JobQueue> constructor creates connection to the L<Redis|Redis> server
+with C<encoding => undef> argument. If a different encoding is desired, pass an established
+connection as instance of L<Redis|Redis> class.
 
-C<new> optionally takes arguments. These arguments are in key-value pairs.
+=item *
+L</DEFAULT_TIMEOUT> value is used when a L<Redis|Redis> class object is
+passed to the C<new> constructor without additional C<timeout> argument.
 
 This example illustrates a C<new()> call with all the valid arguments:
 
@@ -1101,37 +1091,27 @@ The following examples illustrate other uses of the C<new> method:
         timeout => $timeout,
         );
 
-An error will cause the program to halt (C<confess>) if an argument is not valid.
+An invalid argument causes die (C<confess>).
 
 =head2 METHODS
-
-An error will cause the program to halt (C<confess>) if an argument is not valid.
-
-ATTENTION: In the L<Redis|Redis> module the synchronous commands throw an
-exception on receipt of an error reply, or return a non-error reply directly.
 
 =head3 C<add_job( $job_data, LPUSH =E<gt> 1 )>
 
 Adds a job to the queue on the Redis server.
 
-The first argument should be an L<Redis::JobQueue::Job|Redis::JobQueue::Job>
-object or a reference to a hash describing L<Redis::JobQueue::Job|Redis::JobQueue::Job>
-object attributes.
-
-Creates a new L<Redis::JobQueue::Job|Redis::JobQueue::Job> object
-if the first argument is a reference to a hash describing
-L<Redis::JobQueue::Job|Redis::JobQueue::Job> object attributes.
-Updates the L<Redis::JobQueue::Job|Redis::JobQueue::Job> object,
-if it was passed as the first argument.
+The first argument should be either L<Redis::JobQueue::Job|Redis::JobQueue::Job>
+object (which is modified by the method) or a reference to a hash representing
+L<Redis::JobQueue::Job|Redis::JobQueue::Job>  - in the latter case
+a new L<Redis::JobQueue::Job|Redis::JobQueue::Job> object is created.
 
 Returns a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object with a new
 unique identifier.
 
 Job status is set to L<STATUS_CREATED|Redis::JobQueue::Job/STATUS_CREATED>.
 
-C<add_job> optionally takes arguments. These arguments are in key-value pairs.
+C<add_job> optionally takes arguments in key-value pairs.
 
-This example illustrates a C<add_job()> call with all the valid arguments:
+The following example illustrates a C<add_job()> call with all the valid arguments:
 
     my $job_data = {
         id           => '4BE19672-C503-11E1-BF34-28791473A258',
@@ -1155,17 +1135,14 @@ This example illustrates a C<add_job()> call with all the valid arguments:
 If used with the optional argument C<LPUSH> => 1, the job is placed at the front of
 the queue and will be returned by the next call to get_next_job.
 
-TTL of job data on Redis server is sets in accordance with the C<expire>
+TTL of job data on Redis server is set in accordance with the C<expire>
 attribute of the L<Redis::JobQueue::Job|Redis::JobQueue::Job> object. Make
 sure it's higher than the time needed to process the other jobs in the queue.
 
-Method returns the object representing the added job.
-
 =head3 C<get_job_status( $job )>
 
-Status of the job is requested from the Redis server. The requested job ID is obtained from
-the argument, which can be either a string or
-a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
+Status of the job is requested from the Redis server. Argument can be either a job ID
+or L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
 Returns the status string or C<undef> when the job data does not exist or job
 was not found on Redis server. See L<Redis::JobQueue::Job|Redis::JobQueue::Job> for
@@ -1216,7 +1193,7 @@ the key or C<undef> when the value is undefined or key is not in the metadata.
 
 Returns C<undef> if the job is not on the Redis server.
 
-The following examples illustrate uses of the C<get_job_status> method:
+The following examples illustrate uses of the C<get_job_meta_data> method:
 
     my $meta_data_href = $jq->get_job_meta_data( $id );
     # or
@@ -1229,12 +1206,11 @@ the jobs metadata.
 
 =head3 C<load_job( $job )>
 
-Loads job data from the Redis server. The requested job ID is
-obtained from the argument, which can be either a string or
+Loads job data from the Redis server. The argument is either job ID or
 a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
 Method returns the object corresponding to the loaded job.
-Returns C<undef> if the job is not on the Redis server.
+Returns C<undef> if the job is not found on the Redis server.
 
 The following examples illustrate uses of the C<load_job> method:
 
@@ -1244,18 +1220,21 @@ The following examples illustrate uses of the C<load_job> method:
 
 =head3 C<get_next_job( queue =E<gt> $queue_name, $blocking =E<gt> 1 )>
 
-Selects the first job identifier in the queue.
+Selects the job identifier which is at the beginning of the queue.
 
 C<get_next_job> takes arguments in key-value pairs.
 You can specify a queue name or a reference to an array of queue names.
 Queues from the list are processed in random order.
 
 By default, each queue is processed in a separate request with the result
-returned immediately.
-If the optional C<blocking> argument is true, then all queues are processed in
-a single request to Redis server.  Additionally, the C<get_next_job> method
-waits for a maximum period of time specified in the C<timeout> attribute of
-the queue object. Use C<timeout> = 0 for an unlimited wait time.
+returned immediately if a job is found (waiting) in that queue. If no waiting
+job found, returns undef.
+In case optional C<blocking> argument is true, all queues are processed in
+a single request to Redis server and if no job is found waiting in queue(s),
+get_next_job execution will be paused for up to C<timeout> seconds or until
+a job becomes available in any of the listed queues.
+
+Use C<timeout> = 0 for an unlimited wait time.
 Default - C<blocking> is false (0).
 
 Method returns the job object corresponding to the received job identifier.
@@ -1380,7 +1359,7 @@ The following examples illustrate uses of the C<ping> method:
 
 =head3 C<quit>
 
-Ask the Redis server to close the connection.
+Close connection to the Redis server.
 
 The following examples illustrate uses of the C<quit> method:
 
@@ -1388,49 +1367,44 @@ The following examples illustrate uses of the C<quit> method:
 
 =head3 C<queue_status>
 
-Queue status of the jobs is scheduled by queue on the Redis server.
-Queue name is obtained from the argument.
-The argument can be either a string or a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
-If the argument is a string, then it must be the name of the queue or the job ID.
+Gets queue status from the Redis server.
+Queue name is obtained from the argument. The argument can be either a 
+string representing a queue name or a 
+L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
-Returns a reference to a hash of the data on the state of the queue.
-
-Returns a reference to an empty hash when the queue and jobs data does not exist.
+Returns a reference to a hash describing state of the queue or a reference 
+to an empty hash when the queue wasn't found.
 
 The following examples illustrate uses of the C<queue_status> method:
 
-    $qstatus = $jq->queue_status( $id );
+    $qstatus = $jq->queue_status( $queue_name );
     # or
     $qstatus = $jq->queue_status( $job );
-    # or
-    $qstatus = $jq->queue_status( $job->queue );
 
-The returned hash contains the following information.
-
-For the queue:
+The returned hash contains the following information related to the queue:
 
 =over 3
 
-=item *
+=item * C<length>
 
-Queue length.
+The number of jobs in the active queue that are waiting to be selected by L</get_next_job> and then processed.
 
-=item *
+=item * C<all_jobs>
 
-The number of jobs on a server belonging to the analyzed queue
-(waiting to selected by L</get_next_job>, and already received and not yet removed).
+The number of ALL jobs tagged with the queue, i.e. including those that were processed before and other jobs,
+not presently waiting in the active queue.
 
-=item *
+=item * C<max_job_age>
 
-The age of the oldest job (the lifetime of the queue).
+The age of the oldest job (the lifetime of the queue) in the active queue.
 
-=item *
+=item * C<min_job_age>
 
-The age of the youngest job.
+The age of the youngest job in the acitve queue.
 
-=item *
+=item * C<lifetime>
 
-Duration of queue activity (the period during which new jobs were created).
+Time it currently takes for a job to pass through the queue.
 
 =back
 
