@@ -15,14 +15,14 @@ use Redis::JobQueue qw(
     STATUS_WORKING
     STATUS_COMPLETED
 
-    ENOERROR
-    EMISMATCHARG
-    EDATATOOLARGE
-    ENETWORK
-    EMAXMEMORYLIMIT
+    E_NO_ERROR
+    E_MISMATCH_ARG
+    E_DATA_TOO_LARGE
+    E_NETWORK
+    E_MAX_MEMORY_LIMIT
     EMAXMEMORYPOLICY
-    EJOBDELETED
-    EREDIS
+    E_JOB_DELETED
+    E_REDIS
     );
 
 my $server = DEFAULT_SERVER.":".DEFAULT_PORT;   # the Redis Server
@@ -31,27 +31,27 @@ sub exception {
     my $jq  = shift;
     my $err = shift;
 
-    if ( $jq->last_errorcode == ENOERROR )
+    if ( $jq->last_errorcode == E_NO_ERROR )
     {
         # For example, to ignore
         return unless $err;
     }
-    elsif ( $jq->last_errorcode == EMISMATCHARG )
+    elsif ( $jq->last_errorcode == E_MISMATCH_ARG )
     {
         # Necessary to correct the code
     }
-    elsif ( $jq->last_errorcode == EDATATOOLARGE )
+    elsif ( $jq->last_errorcode == E_DATA_TOO_LARGE )
     {
         # You must use the control data length
     }
-    elsif ( $jq->last_errorcode == ENETWORK )
+    elsif ( $jq->last_errorcode == E_NETWORK )
     {
         # For example, sleep
         #sleep 60;
         # and return code to repeat the operation
         #return "to repeat";
     }
-    elsif ( $jq->last_errorcode == EMAXMEMORYLIMIT )
+    elsif ( $jq->last_errorcode == E_MAX_MEMORY_LIMIT )
     {
         # For example, return code to restart the server
         #return "to restart the redis server";
@@ -62,13 +62,13 @@ sub exception {
         my $id = $err =~ /^(\S+)/;
         #return "to recreate $id";
     }
-    elsif ( $jq->last_errorcode == EJOBDELETED )
+    elsif ( $jq->last_errorcode == E_JOB_DELETED )
     {
         # For example, return code to ignore
         my $id = $err =~ /^(\S+)/;
         #return "to ignore $id";
     }
-    elsif ( $jq->last_errorcode == EREDIS )
+    elsif ( $jq->last_errorcode == E_REDIS )
     {
         # Independently analyze the $jq->last_error
     }

@@ -14,13 +14,13 @@ BEGIN { use_ok 'Redis::JobQueue', qw(
     DEFAULT_PORT
     DEFAULT_TIMEOUT
 
-    ENOERROR
-    EMISMATCHARG
-    EDATATOOLARGE
-    ENETWORK
-    EMAXMEMORYLIMIT
-    EJOBDELETED
-    EREDIS
+    E_NO_ERROR
+    E_MISMATCH_ARG
+    E_DATA_TOO_LARGE
+    E_NETWORK
+    E_MAX_MEMORY_LIMIT
+    E_JOB_DELETED
+    E_REDIS
     ) }
 
 can_ok( 'Redis::JobQueue', 'new' );
@@ -44,12 +44,12 @@ ok( $val = DEFAULT_PORT,        "import OK: $val" );
 $val = undef;
 ok( defined ( $val = DEFAULT_TIMEOUT ),     "import OK: $val" );
 
-ok( ( $val = ENOERROR ) == 0,   "import OK: $val" );
-ok( $val = EMISMATCHARG,        "import OK: $val" );
-ok( $val = EDATATOOLARGE,       "import OK: $val" );
-ok( $val = ENETWORK,            "import OK: $val" );
-ok( $val = EMAXMEMORYLIMIT,     "import OK: $val" );
-ok( $val = EJOBDELETED,         "import OK: $val" );
-ok( $val = EREDIS,              "import OK: $val" );
+ok( ( $val = E_NO_ERROR ) == 0,   "import OK: $val" );
+ok( $val = E_MISMATCH_ARG,        "import OK: $val" );
+ok( $val = E_DATA_TOO_LARGE,       "import OK: $val" );
+ok( $val = E_NETWORK,            "import OK: $val" );
+ok( $val = E_MAX_MEMORY_LIMIT,     "import OK: $val" );
+ok( $val = E_JOB_DELETED,         "import OK: $val" );
+ok( $val = E_REDIS,              "import OK: $val" );
 
 ok( $val = Redis::JobQueue::MAX_DATASIZE, "import OK: $val" );

@@ -30,13 +30,13 @@ use Redis::JobQueue qw(
     DEFAULT_PORT
     DEFAULT_TIMEOUT
 
-    ENOERROR
-    EMISMATCHARG
-    EDATATOOLARGE
-    ENETWORK
-    EMAXMEMORYLIMIT
-    EJOBDELETED
-    EREDIS
+    E_NO_ERROR
+    E_MISMATCH_ARG
+    E_DATA_TOO_LARGE
+    E_NETWORK
+    E_MAX_MEMORY_LIMIT
+    E_JOB_DELETED
+    E_REDIS
     );
 
 use Redis::JobQueue::Job qw(
@@ -116,7 +116,7 @@ isa_ok( $job, 'Redis::JobQueue::Job');
 @jobs = $jq->get_job_ids;
 ok scalar( @jobs ), "jobs exists";
 
-#-- EDATATOOLARGE
+#-- E_DATA_TOO_LARGE
 
 my $prev_max_datasize = $jq->max_datasize;
 my $max_datasize = 100;
@@ -125,7 +125,7 @@ $jq->max_datasize( $max_datasize );
 
 $job = undef;
 eval { $job = $jq->add_job( $pre_job ) };
-is $jq->last_errorcode, EDATATOOLARGE, "EDATATOOLARGE";
+is $jq->last_errorcode, E_DATA_TOO_LARGE, "E_DATA_TOO_LARGE";
 note '$@: ', $@;
 is $job, undef, "the job isn't changed";
 $jq->max_datasize( $prev_max_datasize );

@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '0.17';
+our $VERSION = '1.00';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -15,13 +15,13 @@ our @EXPORT_OK  = qw(
     DEFAULT_TIMEOUT
     NAMESPACE
 
-    ENOERROR
-    EMISMATCHARG
-    EDATATOOLARGE
-    ENETWORK
-    EMAXMEMORYLIMIT
-    EJOBDELETED
-    EREDIS
+    E_NO_ERROR
+    E_MISMATCH_ARG
+    E_DATA_TOO_LARGE
+    E_NETWORK
+    E_MAX_MEMORY_LIMIT
+    E_JOB_DELETED
+    E_REDIS
     );
 
 #-- load the modules -----------------------------------------------------------
@@ -65,13 +65,13 @@ use constant {
     NAMESPACE           => 'JobQueue',
     NS_METADATA_SUFFIX  => 'M',
 
-    ENOERROR            => 0,
-    EMISMATCHARG        => 1,
-    EDATATOOLARGE       => 2,
-    ENETWORK            => 3,
-    EMAXMEMORYLIMIT     => 4,
-    EJOBDELETED         => 5,
-    EREDIS              => 6,
+    E_NO_ERROR          => 0,
+    E_MISMATCH_ARG      => 1,
+    E_DATA_TOO_LARGE    => 2,
+    E_NETWORK           => 3,
+    E_MAX_MEMORY_LIMIT  => 4,
+    E_JOB_DELETED       => 5,
+    E_REDIS             => 6,
     };
 
 our @ERROR = (
@@ -144,10 +144,10 @@ sub BUILD {
     my ( undef, $max_datasize ) = $self->_call_redis( 'CONFIG', 'GET', 'maxmemory' );
     unless ( defined( _NONNEGINT( $max_datasize ) ) )
     {
-        $self->_set_last_errorcode( ENETWORK );
-        die $ERROR[ ENETWORK ];
+        $self->_set_last_errorcode( E_NETWORK );
+        die $ERROR[ E_NETWORK ];
     }
-    defined( _NONNEGINT( $max_datasize ) ) or die $ERROR[ ENETWORK ];
+    defined( _NONNEGINT( $max_datasize ) ) or die $ERROR[ E_NETWORK ];
     $self->max_datasize( min $max_datasize, $self->max_datasize )
         if $max_datasize;
 }
@@ -205,10 +205,10 @@ has '_transaction'      => (
 sub add_job {
     my $self        = shift;
 
-    $self->_set_last_errorcode( ENOERROR );
+    $self->_set_last_errorcode( E_NO_ERROR );
     ref( $_[0] ) eq 'HASH'
         or _INSTANCE( $_[0], 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
     my $job = _INSTANCE( $_[0], 'Redis::JobQueue::Job' ) ? shift : Redis::JobQueue::Job->new( shift );
 
@@ -318,7 +318,7 @@ sub _get_field {
 
     defined( _STRING( $arg ) )
         or _INSTANCE( $arg, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ]." ($field)" )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ]." ($field)" )
         ;
 
     my $key = $self->_jkey( ref( $arg ) ? $arg->id : $arg );
@@ -346,7 +346,7 @@ sub get_job_meta_data {
 
     defined( _STRING( $arg ) )
         or _INSTANCE( $arg, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
 
     my $key = $self->_jkey( ref( $arg ) ? $arg->id : $arg );
@@ -360,7 +360,7 @@ sub load_job {
 
     defined( _STRING( $arg ) )
         or _INSTANCE( $arg, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
 
     my $id = ref( $arg )    ? $arg->id
@@ -417,7 +417,7 @@ sub get_next_job {
     my $self        = shift;
 
     !( scalar( @_ ) % 2 )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
     my %args = ( @_ );
     my $queues      = $args{queue};
@@ -429,7 +429,7 @@ sub get_next_job {
     foreach my $arg ( ( @{$queues} ) )
     {
         defined _STRING( $arg )
-            or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+            or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
             ;
     }
 
@@ -491,8 +491,8 @@ sub _get_next_job {
             or time < $expire_time
             )
         {
-            $self->_set_last_errorcode( EJOBDELETED );
-            confess $id.' '.$ERROR[ EJOBDELETED ];
+            $self->_set_last_errorcode( E_JOB_DELETED );
+            confess $id.' '.$ERROR[ E_JOB_DELETED ];
         }
 # If the queue contains a job identifier that has already been removed due
 # to expiration of the 'expire' time, the cycle will ensure the transition
@@ -506,7 +506,7 @@ sub update_job {
     my $job         = shift;
 
     _INSTANCE( $job, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
 
     my $id = $job->id;
@@ -553,7 +553,7 @@ sub delete_job {
 
     defined( _STRING( $arg ) )
         or _INSTANCE( $arg, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
 
     my $key = $self->_jkey( ref( $arg ) ? $arg->id : $arg );
@@ -575,7 +575,7 @@ sub delete_job {
 sub get_job_ids {
     my $self        = shift;
 
-    $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ].' (Odd number of elements in hash assignment)'
+    $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ].' (Odd number of elements in hash assignment)'
         if ( scalar( @_ ) % 2 );
 
     my %args = @_;
@@ -659,7 +659,7 @@ sub server {
 sub ping {
     my $self        = shift;
 
-    $self->_set_last_errorcode( ENOERROR );
+    $self->_set_last_errorcode( E_NO_ERROR );
 
     my $ret = eval { $self->_redis->ping };
     $self->_redis_exception( $@ )
@@ -670,7 +670,7 @@ sub ping {
 sub quit {
     my $self        = shift;
 
-    $self->_set_last_errorcode( ENOERROR );
+    $self->_set_last_errorcode( E_NO_ERROR );
     eval { $self->_redis->quit };
     $self->_redis_exception( $@ )
         if $@;
@@ -683,7 +683,7 @@ sub queue_status {
 
     defined( _STRING( $arg ) )
         or _INSTANCE( $arg, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ] )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
 
     my $queue;
@@ -763,18 +763,18 @@ sub _redis_exception {
         or $error =~ /^Redis server closed connection/
         )
     {
-        $self->_set_last_errorcode( ENETWORK );
+        $self->_set_last_errorcode( E_NETWORK );
     }
     elsif (
            $error =~ /[\S+] ERR command not allowed when used memory > 'maxmemory'/
         or $error =~ /[\S+] OOM command not allowed when used memory > 'maxmemory'/
         )
     {
-        $self->_set_last_errorcode( EMAXMEMORYLIMIT );
+        $self->_set_last_errorcode( E_MAX_MEMORY_LIMIT );
     }
     else
     {
-        $self->_set_last_errorcode( EREDIS );
+        $self->_set_last_errorcode( E_REDIS );
     }
 
     if ( $self->_transaction )
@@ -788,7 +788,7 @@ sub _redis_exception {
 sub _redis_constructor {
     my $self    = shift;
 
-    $self->_set_last_errorcode( ENOERROR );
+    $self->_set_last_errorcode( E_NO_ERROR );
     my $redis;
     eval { $redis = Redis->new(
         server      => $self->_server,
@@ -809,7 +809,7 @@ sub _call_redis {
 
     my $method = shift;
     my @result;
-    $self->_set_last_errorcode( ENOERROR );
+    $self->_set_last_errorcode( E_NO_ERROR );
 
     # name of the key hash metadata ends at ':'.NS_METADATA_SUFFIX
     my $suffix = NS_METADATA_SUFFIX;
@@ -829,9 +829,9 @@ sub _call_redis {
                 eval { $self->_redis->discard };
                 $self->_transaction( 0 );
             }
-            $self->_set_last_errorcode( EDATATOOLARGE );
+            $self->_set_last_errorcode( E_DATA_TOO_LARGE );
 # 'die' as maybe too long to analyze the data output from the 'confess'
-            die $ERROR[ EDATATOOLARGE ].': '.$_[1];
+            die $ERROR[ E_DATA_TOO_LARGE ].': '.$_[1];
         }
 
         @result = eval {
@@ -845,7 +845,7 @@ sub _call_redis {
     elsif ( $method eq 'HSET' and !$self->_redis->{encoding} and utf8::is_utf8( $_[2] ) )
     {
         # For non-serialized fields: UTF8 can not be transferred to the Redis server in mode of 'encoding => undef'
-        $self->_set_last_errorcode( EMISMATCHARG ), confess $ERROR[ EMISMATCHARG ]." (utf8 in $_[1])";
+        $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ]." (utf8 in $_[1])";
     }
     else
     {
@@ -935,7 +935,7 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 0.17
+This documentation refers to C<Redis::JobQueue> version 1.00
 
 =head1 SYNOPSIS
 
@@ -1500,7 +1500,7 @@ The method to retrieve a possible error for analysis is: L</last_errorcode>.
 
 A L<Redis|Redis> error will cause the program to halt (C<confess>).
 In addition to errors in the L<Redis|Redis> module detected errors
-L</EMISMATCHARG>, L</EDATATOOLARGE>, L</EJOBDELETED>.
+L</E_MISMATCH_ARG>, L</E_DATA_TOO_LARGE>, L</E_JOB_DELETED>.
 All recognizable errors in C<Redis::JobQueue> lead to
 the installation of the corresponding value in the L</last_errorcode> and cause
 an exception (C<confess>).
@@ -1527,31 +1527,31 @@ In L</last_errortsode> recognizes the following:
 
 =over 3
 
-=item C<ENOERROR>
+=item C<E_NO_ERROR>
 
 No error.
 
-=item C<EMISMATCHARG>
+=item C<E_MISMATCH_ARG>
 
 Invalid argument of C<new> or to other L<method|/METHODS>.
 
-=item C<EDATATOOLARGE>
+=item C<E_DATA_TOO_LARGE>
 
 This means that the data is too large.
 
-=item C<ENETWORK>
+=item C<E_NETWORK>
 
 Error connecting to Redis server.
 
-=item C<EMAXMEMORYLIMIT>
+=item C<E_MAX_MEMORY_LIMIT>
 
 Command failed because it requires more than allowed memory, set in C<maxmemory>.
 
-=item C<EJOBDELETED>
+=item C<E_JOB_DELETED>
 
 Job's data was removed.
 
-=item C<EREDIS>
+=item C<E_REDIS>
 
 This means that other Redis error message detected.
 
@@ -1570,13 +1570,13 @@ This example shows a possible treatment for possible errors.
         STATUS_COMPLETED
         STATUS_FAILED
 
-        ENOERROR
-        EMISMATCHARG
-        EDATATOOLARGE
-        ENETWORK
-        EMAXMEMORYLIMIT
-        EJOBDELETED
-        EREDIS
+        E_NO_ERROR
+        E_MISMATCH_ARG
+        E_DATA_TOO_LARGE
+        E_NETWORK
+        E_MAX_MEMORY_LIMIT
+        E_JOB_DELETED
+        E_REDIS
         );
 
     my $server = DEFAULT_SERVER.':'.DEFAULT_PORT;   # the Redis Server
@@ -1586,38 +1586,38 @@ This example shows a possible treatment for possible errors.
         my $jq  = shift;
         my $err = shift;
 
-        if ( $jq->last_errorcode == ENOERROR )
+        if ( $jq->last_errorcode == E_NO_ERROR )
         {
             # For example, to ignore
             return unless $err;
         }
-        elsif ( $jq->last_errorcode == EMISMATCHARG )
+        elsif ( $jq->last_errorcode == E_MISMATCH_ARG )
         {
             # Necessary to correct the code
         }
-        elsif ( $jq->last_errorcode == EDATATOOLARGE )
+        elsif ( $jq->last_errorcode == E_DATA_TOO_LARGE )
         {
             # You must use the control data length
         }
-        elsif ( $jq->last_errorcode == ENETWORK )
+        elsif ( $jq->last_errorcode == E_NETWORK )
         {
             # For example, sleep
             #sleep 60;
             # and return code to repeat the operation
             #return "to repeat";
         }
-        elsif ( $jq->last_errorcode == EMAXMEMORYLIMIT )
+        elsif ( $jq->last_errorcode == E_MAX_MEMORY_LIMIT )
         {
             # For example, return code to restart the server
             #return "to restart the redis server";
         }
-        elsif ( $jq->last_errorcode == EJOBDELETED )
+        elsif ( $jq->last_errorcode == E_JOB_DELETED )
         {
             # For example, return code to ignore
             my $id = $err =~ /^(\S+)/;
             #return "to ignore $id";
         }
-        elsif ( $jq->last_errorcode == EREDIS )
+        elsif ( $jq->last_errorcode == E_REDIS )
         {
             # Independently analyze the $err
         }

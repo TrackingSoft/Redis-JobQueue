@@ -28,4 +28,4 @@ requires:
   Redis: 1.926
   Storable: 2.39
   perl: 5.010
-version: 0.17
+version: 1.00

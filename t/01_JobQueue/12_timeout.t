@@ -30,13 +30,13 @@ use Redis::JobQueue qw(
     DEFAULT_PORT
     DEFAULT_TIMEOUT
 
-    ENOERROR
-    EMISMATCHARG
-    EDATATOOLARGE
-    ENETWORK
-    EMAXMEMORYLIMIT
-    EJOBDELETED
-    EREDIS
+    E_NO_ERROR
+    E_MISMATCH_ARG
+    E_DATA_TOO_LARGE
+    E_NETWORK
+    E_MAX_MEMORY_LIMIT
+    E_JOB_DELETED
+    E_REDIS
     );
 
 use Redis::JobQueue::Job qw(
@@ -120,9 +120,9 @@ isa_ok( $job, 'Redis::JobQueue::Job');
 @jobs = $jq->get_job_ids;
 ok scalar( @jobs ), "jobs exists";
 
-#-- ENOERROR
+#-- E_NO_ERROR
 
-is $jq->last_errorcode, ENOERROR, "ENOERROR";
+is $jq->last_errorcode, E_NO_ERROR, "E_NO_ERROR";
 note '$@: ', $@;
 
 #-- timeout

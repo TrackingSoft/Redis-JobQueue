@@ -1,6 +1,10 @@
 Revision history for Redis::JobQueue package
 
-0.17  Wed Apr  24 2013
+1.00  Wed Apr 30 2013
+
+    !!! This is a major upgrade that changes API. It's strongly advised to study
+    revised documentation and update your code where necessary !!!
+
     CHANGES:
     - Fields 'result' and 'workload':
       It is possible to use any data structure (SCALAR, HASH, ARRAY, OBJECT).
@@ -38,6 +42,7 @@ Revision history for Redis::JobQueue package
       to 'encoding => undef'.
     - Added test using 'utf8' data (t/01_JobQueue/t_utf8.t).
     - Added new functionality testing.
+    - Change to user-friendly constant names
 
 0.16  Tue Mar  12 2013
     CHANGES:
