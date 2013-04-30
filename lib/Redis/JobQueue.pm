@@ -29,6 +29,9 @@ our @EXPORT_OK  = qw(
 # Modules
 use Carp;
 use Data::UUID;
+use Digest::SHA1 qw(
+    sha1_hex
+    );
 use List::Util qw(
     min
     shuffle
@@ -92,6 +95,8 @@ my $uuid = new Data::UUID;
 
 my $_job_keys_re = '^'.NAMESPACE.':([^:]+)$';
 
+my %lua_script_body;
+
 #-- constructor ----------------------------------------------------------------
 
 around BUILDARGS => sub {
@@ -150,6 +155,14 @@ sub BUILD {
     defined( _NONNEGINT( $max_datasize ) ) or die $ERROR[ E_NETWORK ];
     $self->max_datasize( min $max_datasize, $self->max_datasize )
         if $max_datasize;
+
+    my ( $major, $minor ) = $self->_redis->info->{redis_version} =~ /^(\d+)\.(\d+)/;
+    if ( $major < 2 or $major == 2 && $minor <= 4 )
+    {
+        $self->_set_last_errorcode( E_REDIS );
+        confess "Need a Redis server version 2.6 or higher";
+    }
+
 }
 
 #-- public attributes ----------------------------------------------------------
@@ -200,6 +213,14 @@ has '_transaction'      => (
     default     => undef,
     );
 
+has '_lua_scripts'          => (
+    is          => 'ro',
+    isa         => 'HashRef[Str]',
+    lazy        => 1,
+    init_arg    => undef,
+    builder     => sub { return {}; },
+    );
+
 #-- public methods -------------------------------------------------------------
 
 sub add_job {
@@ -212,13 +233,7 @@ sub add_job {
         ;
     my $job = _INSTANCE( $_[0], 'Redis::JobQueue::Job' ) ? shift : Redis::JobQueue::Job->new( shift );
 
-    my $to_left;
     my %args = ( @_ );
-    foreach my $k ( keys %args )
-    {
-        ++$to_left
-            if ( $k =~ /^LPUSH$/i and $args{ $k } );
-    }
 
     my $id;
     do
@@ -242,7 +257,7 @@ sub add_job {
     $key = $self->_qkey( $job->queue );
 # Warning: change '$id'
     $id .= ' '.( time + $expire ) if $expire;
-    $self->_call_redis( $to_left ? 'LPUSH' : 'RPUSH', $key, $id );
+    $self->_call_redis( $args{LPUSH} ? 'LPUSH' : 'RPUSH', $key, $id );
 
 # transaction end
     $self->_call_redis( 'EXEC' );
@@ -262,96 +277,112 @@ sub _set_meta_data {
     $self->_call_redis( 'EXPIRE', $key, $expire ) if $expire;
 }
 
-sub get_job_status {
+sub get_job_data {
     my $self        = shift;
-    my $arg         = shift;
+    my $id_source   = shift;
+    my @fields      = @_;
 
-    return $self->_get_field( $arg, 'status' );
-}
-
-sub get_job_progress {
-    my $self        = shift;
-    my $arg         = shift;
-
-    return $self->_get_field( $arg, 'progress' );
-}
-
-sub get_job_message {
-    my $self        = shift;
-    my $arg         = shift;
-
-    return $self->_get_field( $arg, 'message' );
-}
-
-sub get_job_created {
-    my $self        = shift;
-    my $arg         = shift;
-
-    return $self->_get_field( $arg, 'created' );
-}
-
-sub get_job_started {
-    my $self        = shift;
-    my $arg         = shift;
-
-    return $self->_get_field( $arg, 'started' );
-}
-
-sub get_job_updated {
-    my $self        = shift;
-    my $arg         = shift;
-
-    return $self->_get_field( $arg, 'updated' );
-}
-
-sub get_job_completed {
-    my $self        = shift;
-    my $arg         = shift;
-
-    return $self->_get_field( $arg, 'completed' );
-}
-
-sub _get_field {
-    my $self        = shift;
-    my $arg         = shift;
-    my $field       = shift;
-
-    defined( _STRING( $arg ) )
-        or _INSTANCE( $arg, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ]." ($field)" )
+    defined( _STRING( $id_source ) )
+        or _INSTANCE( $id_source, 'Redis::JobQueue::Job' )
+        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
 
-    my $key = $self->_jkey( ref( $arg ) ? $arg->id : $arg );
-    return $self->_call_redis( 'HGET', $key, $field );
-}
+    my $jkey = $self->_jkey( ref( $id_source ) ? $id_source->id : $id_source );
 
-sub get_job_elapsed {
-    my $self        = shift;
-    my $arg         = shift;
-
-    if ( my $started = $self->get_job_started( $arg ) )
+    if ( !@fields )
     {
-        return( ( $self->get_job_completed( $arg ) || time ) - $started );
+        my $data = {};
+        foreach my $field ( @job_fields )
+        {
+            $data->{ $field } = $field =~ /^(workload|result)$/ ? $self->_call_redis_ref( 'HGET', $jkey, $field )
+                                                                : $self->_call_redis( 'HGET', $jkey, $field );
+        }
+        if ( my $started = $data->{started} )
+        {
+            $data->{elapsed} = ( $data->{completed} || time ) - $started;
+        }
+        else
+        {
+            $data->{elapsed} = undef;
+        }
+        return $data;
     }
     else
     {
-        return;
+        my @data = ();
+        foreach my $field ( @fields )
+        {
+            if ( ( firstidx { $_ eq $field } @job_fields ) != -1 )
+            {
+                push @data, $field =~ /^(workload|result)$/ ? $self->_call_redis_ref( 'HGET', $jkey, $field )
+                                                            : $self->_call_redis( 'HGET', $jkey, $field );
+            }
+            elsif ( $field eq 'elapsed' )
+            {
+                if ( my $started = $self->_call_redis( 'HGET', $jkey, 'started' ) )
+                {
+                    push @data, ( $self->_call_redis( 'HGET', $jkey, 'completed' ) || time ) - $started;
+                }
+                else
+                {
+                    push @data, undef;
+                }
+            }
+            else
+            {
+                push @data, $self->_load_job_meta_data( $jkey, $field );
+            }
+        }
+        return wantarray ? @data : $data[0];
     }
 }
 
 sub get_job_meta_data {
     my $self        = shift;
-    my $arg         = shift;
-    my $mdata_key   = shift;
+    my $id_source   = shift;
+    my @mdata_keys  = @_;
 
-    defined( _STRING( $arg ) )
-        or _INSTANCE( $arg, 'Redis::JobQueue::Job' )
+    defined( _STRING( $id_source ) )
+        or _INSTANCE( $id_source, 'Redis::JobQueue::Job' )
         or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
         ;
 
-    my $key = $self->_jkey( ref( $arg ) ? $arg->id : $arg );
+    my $key = $self->_jkey( ref( $id_source ) ? $id_source->id : $id_source );
 
-    return $self->_load_job_meta_data( $key, $mdata_key );
+    return $self->_load_job_meta_data( $key, @mdata_keys );
+}
+
+sub _load_job_meta_data {
+    my $self        = shift;
+    my $key         = shift;
+    my @mdata_keys  = @_;
+
+    $key = $self->_get_meta_data_key( $key );
+    if ( !@mdata_keys )
+    {
+        my $meta_data = { $self->_call_redis( 'HGETALL', $key ) };
+        foreach my $key ( keys %$meta_data )
+        {
+            $meta_data->{ $key } = Storable::thaw( $meta_data->{ $key } );
+            $meta_data->{ $key } = ${ $meta_data->{ $key } };
+        }
+        return $meta_data;
+    }
+    else
+    {
+        my @meta_data = ();
+        foreach my $mdata_key ( @mdata_keys )
+        {
+            my $data = $self->_call_redis( 'HGET', $key, $mdata_key );
+            if ( $data )
+            {
+                $data = Storable::thaw( $data );
+                $data = ${ $data };
+            }
+            push @meta_data, $data;
+        }
+        return wantarray ? @meta_data : $meta_data[0];
+    }
 }
 
 sub load_job {
@@ -375,7 +406,7 @@ sub load_job {
         next
             if $field eq 'id';
         $pre_job->{ $field } = $field =~ /^(workload|result)$/  ? $self->_call_redis_ref( 'HGET', $key, $field )
-                                                            : $self->_call_redis( 'HGET', $key, $field );
+                                                                : $self->_call_redis( 'HGET', $key, $field );
     }
 
     $pre_job->{meta_data} = $self->_load_job_meta_data( $key );
@@ -383,34 +414,6 @@ sub load_job {
     my $new_job = Redis::JobQueue::Job->new( $pre_job );
     $new_job->clear_variability( @job_fields );
     return $new_job;
-}
-
-sub _load_job_meta_data {
-    my $self        = shift;
-    my $key         = shift;
-    my $mdata_key   = shift;
-
-    $key = $self->_get_meta_data_key( $key );
-    my $meta_data;
-    if ( !$mdata_key )
-    {
-        $meta_data = { $self->_call_redis( 'HGETALL', $key ) };
-        foreach my $key ( keys %$meta_data )
-        {
-            $meta_data->{ $key } = Storable::thaw( $meta_data->{ $key } );
-            $meta_data->{ $key } = ${ $meta_data->{ $key } };
-        }
-    }
-    else
-    {
-        if ( defined( $meta_data = $self->_call_redis( 'HGET', $key, $mdata_key ) ) )
-        {
-            $meta_data = Storable::thaw( $meta_data );
-            $meta_data = ${ $meta_data };
-        }
-    }
-
-    return $meta_data;
 }
 
 sub get_next_job {
@@ -642,7 +645,7 @@ sub get_job_ids {
                 $ids{ $status }++ if $status eq $self->_call_redis( 'HGET', $self->_jkey( $id ), 'status' );
             }
         }
-        return( %ids ? keys( %ids ) : () );
+        return keys %ids;
     }
     else
     {
@@ -699,50 +702,49 @@ sub queue_status {
         }
         else
         {
-            $queue = $self->_call_redis( 'HGET', $self->_qkey( $arg ), 'queue' );
+            $queue = $self->_call_redis( 'HGET', $self->_jkey( $arg ), 'queue' );
         }
     }
-
-    return unless $queue;
 
     my $qstatus     = {};
-    my $qkey        = $self->_qkey( $queue );
-    my $tm          = time;
-
-    # Queue length
-    if ( $qstatus->{length} = $self->_call_redis( 'LLEN', $qkey ) )
+    if ( $queue )
     {
-        # jobs in the active queue
-        foreach my $full_id ( $self->_call_redis( 'LRANGE', $qkey, 0, -1 ) )
-        {
-            my ( $id, undef ) = split ' ', $full_id;
-            my $jkey = $self->_jkey( $id );
+        my $qkey        = $self->_qkey( $queue );
+        my $tm          = time;
 
-            if ( my $created = $self->_call_redis( 'HGET', $jkey, 'created' ) )
+        # Queue length
+        if ( $qstatus->{length} = $self->_call_redis( 'LLEN', $qkey ) )
+        {
+            # jobs in the active queue
+            foreach my $full_id ( $self->_call_redis( 'LRANGE', $qkey, 0, -1 ) )
             {
-                $qstatus->{max_job_age} = $created  # time of birth
-                    if !$qstatus->{max_job_age} or $created < $qstatus->{max_job_age};
-                $qstatus->{min_job_age} = $created  # time of birth
-                    if !$qstatus->{min_job_age} or $created > $qstatus->{min_job_age};
+                my ( $id, undef ) = split ' ', $full_id;
+                my $jkey = $self->_jkey( $id );
+
+                if ( my $created = $self->_call_redis( 'HGET', $jkey, 'created' ) )
+                {
+                    $qstatus->{max_job_age} = $created  # time of birth
+                        if !$qstatus->{max_job_age} or $created < $qstatus->{max_job_age};
+                    $qstatus->{min_job_age} = $created  # time of birth
+                        if !$qstatus->{min_job_age} or $created > $qstatus->{min_job_age};
+                }
             }
+        }
+
+        # time of birth -> age
+        if ( $qstatus->{max_job_age} )              # $qstatus->{min_job_age} also != 0
+        {
+            # The age of the old job (the lifetime of the queue)
+            $qstatus->{max_job_age} = $tm - $qstatus->{max_job_age};
+            # The age of the younger job
+            $qstatus->{min_job_age} = $tm - $qstatus->{min_job_age};
+            # Duration of queue activity (the period during which new jobs were created)
+            $qstatus->{lifetime} = $qstatus->{max_job_age} - $qstatus->{min_job_age};
         }
     }
 
-    # time of birth -> age
-    if ( $qstatus->{max_job_age} )              # $qstatus->{min_job_age} also != 0
-    {
-        # The age of the old job (the lifetime of the queue)
-        $qstatus->{max_job_age} = $tm - $qstatus->{max_job_age};
-
-        # The age of the younger job
-        $qstatus->{min_job_age} = $tm - $qstatus->{min_job_age};
-
-        # Duration of queue activity (the period during which new jobs were created)
-        $qstatus->{lifetime} = $qstatus->{max_job_age} - $qstatus->{min_job_age};
-    }
-
-   # all jobs in the queue, including inactive ones
-   $qstatus->{all_jobs} = scalar $self->get_job_ids( queue => $queue );
+    # all jobs in the queue, including inactive ones
+    $qstatus->{all_jobs} = scalar $self->get_job_ids( queue => $queue );
 
     return $qstatus;
 }
@@ -921,6 +923,22 @@ sub _qkey {
     return NAMESPACE.":queue:@_";
 }
 
+sub _lua_script_cmd {
+    my $self        = shift;
+    my $name        = shift;
+
+    my $sha1 = $self->_lua_scripts->{ $name };
+    unless ( $sha1 )
+    {
+        $sha1 = $self->_lua_scripts->{ $name } = sha1_hex( $lua_script_body{ $name } );
+        unless ( ( $self->_call_redis( 'SCRIPT', 'EXISTS', $sha1 ) )[0] )
+        {
+            return( 'EVAL', $lua_script_body{ $name } );
+        }
+    }
+    return( 'EVALSHA', $sha1 );
+}
+
 #-- Closes and cleans up -------------------------------------------------------
 
 no Mouse::Util::TypeConstraints;
@@ -981,7 +999,7 @@ This documentation refers to C<Redis::JobQueue> version 1.00
 
     #-- Consumer
     my $id = $ARGV[0];
-    my $status = $jq->get_job_status( $id );
+    my $status = $jq->get_job_data( $id, 'status' );
 
     if ( $status eq 'completed' )
     {
@@ -1049,6 +1067,8 @@ local C<redis> server.
 
 Caveats related to connection with Redis server
 
+=over 3
+
 =item *
 
 Since L<Redis|Redis> knows nothing about encoding, it forces a utf-8 flag
@@ -1063,13 +1083,17 @@ fields (like status or message) passed in UTF-8 can not be transferred
 correctly to the L<Redis|Redis> server.
 
 =item *
+
 By default C<Redis::JobQueue> constructor creates connection to the L<Redis|Redis> server
-with C<encoding => undef> argument. If a different encoding is desired, pass an established
+with C<encoding =E<gt> undef> argument. If a different encoding is desired, pass an established
 connection as instance of L<Redis|Redis> class.
 
 =item *
+
 L</DEFAULT_TIMEOUT> value is used when a L<Redis|Redis> class object is
 passed to the C<new> constructor without additional C<timeout> argument.
+
+=back
 
 This example illustrates a C<new()> call with all the valid arguments:
 
@@ -1101,7 +1125,7 @@ Adds a job to the queue on the Redis server.
 
 The first argument should be either L<Redis::JobQueue::Job|Redis::JobQueue::Job>
 object (which is modified by the method) or a reference to a hash representing
-L<Redis::JobQueue::Job|Redis::JobQueue::Job>  - in the latter case
+L<Redis::JobQueue::Job|Redis::JobQueue::Job> - in the latter case
 a new L<Redis::JobQueue::Job|Redis::JobQueue::Job> object is created.
 
 Returns a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object with a new
@@ -1132,66 +1156,60 @@ The following example illustrates a C<add_job()> call with all the valid argumen
         LPUSH       => 1,
         );
 
-If used with the optional argument C<LPUSH> => 1, the job is placed at the front of
+If used with the optional argument C<LPUSH =E<gt> 1>, the job is placed at the front of
 the queue and will be returned by the next call to get_next_job.
 
 TTL of job data on Redis server is set in accordance with the C<expire>
 attribute of the L<Redis::JobQueue::Job|Redis::JobQueue::Job> object. Make
 sure it's higher than the time needed to process the other jobs in the queue.
 
-=head3 C<get_job_status( $job )>
+=head3 C<get_job_data( $job, $data_key )>
 
-Status of the job is requested from the Redis server. Argument can be either a job ID
-or L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
+Data of the job is requested from the Redis server. First argument can be either
+a job ID or L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
-Returns the status string or C<undef> when the job data does not exist or job
-was not found on Redis server. See L<Redis::JobQueue::Job|Redis::JobQueue::Job> for
-the list of pre-defined status strings.
+Returns C<undef> when the job was not found on Redis server.
 
-The following examples illustrate uses of the C<get_job_status> method:
+The method returns the jobs data from the Redis server.
+See L<Redis::JobQueue::Job|Redis::JobQueue::Job> for the list of standard jobs data.
 
-    my $status = $jq->get_job_status( $id );
+The method returns a reference to a hash of the standard jobs data
+if only the first argument is specified.
+
+If given a key name C<$data_key>, it returns data corresponding to
+the key or C<undef> when the value is undefined or key is not in the data or metadata.
+
+The following examples illustrate uses of the C<get_job_data> method:
+
+    my $data_href = $jq->get_job_data( $id );
     # or
-    $status = $jq->get_job_status( $job );
+    $data_href = $jq->get_job_data( $job );
+    # or
+    my $data_key = 'foo';
+    my $data = $jq->get_job_data( $job->id, $data_key );
 
-=head3 C<get_job_created( $job )>
+You can specify a list of names of key data or metadata.
+In this case it returns the corresponding list of data. For example:
 
-Works similarly to L</get_job_status>, but returns the value of the job L<created|Redis::JobQueue::Job/created> attribute.
+    my @data = $jq->get_job_data( $job->id, 'status', 'foo' );
 
-=head3 C<get_job_started( $job )>
-
-Works similarly to L</get_job_status>, but returns the value of the job L<started|Redis::JobQueue::Job/started> attribute.
-
-=head3 C<get_job_updated( $job )>
-
-Works similarly to L</get_job_status>, but returns the value of the job L<updated|Redis::JobQueue::Job/updated> attribute.
-
-=head3 C<get_job_completed( $job )>
-
-Works similarly to L</get_job_status>, but returns the value of the job L<completed|Redis::JobQueue::Job/completed> attribute.
-
-=head3 C<get_job_elapsed( $job )>
-
-Works similarly to L</get_job_status>, but returns the value of the job L<elapsed|Redis::JobQueue::Job/elapsed> attribute.
-
-=head3 C<get_job_message( $job )>
-
-Works similarly to L</get_job_status>, but returns the value of the job L<message|Redis::JobQueue::Job/message> attribute.
-
-=head3 C<get_job_progress( $job )>
-
-Works similarly to L</get_job_status>, but returns the value of the job L<progress|Redis::JobQueue::Job/progress> attribute.
+See L<meta_data|Redis::JobQueue::Job/meta_data> for more informations about
+the jobs metadata.
 
 =head3 C<get_job_meta_data( $job, $meta_data_key )>
 
-The method returns a reference to a hash of the jobs metadata from the Redis server.
-The requested job ID is obtained from the argument, which can be either a string or
-a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
+Metadata of the job is requested from the Redis server. First argument can be either
+a job ID or L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
+
+Returns C<undef> when the job was not found on Redis server.
+
+The method returns the jobs metadata from the Redis server.
+
+The method returns a reference to a hash of the jobs metadata
+if only the first argument is specified.
 
 If given a key name C<$meta_data_key>, it returns data corresponding to
 the key or C<undef> when the value is undefined or key is not in the metadata.
-
-Returns C<undef> if the job is not on the Redis server.
 
 The following examples illustrate uses of the C<get_job_meta_data> method:
 
@@ -1199,7 +1217,13 @@ The following examples illustrate uses of the C<get_job_meta_data> method:
     # or
     $meta_data_href = $jq->get_job_meta_data( $job );
     # or
-    my $meta_data = $jq->get_job_meta_data( $added_job->id, 'foo' );
+    my $meta_data_key = 'foo';
+    my $meta_data = $jq->get_job_meta_data( $job->id, $meta_data_key );
+
+You can specify a list of names of key metadata.
+In this case it returns the corresponding list of metadata. For example:
+
+    my @meta_data = $jq->get_job_meta_data( $job->id, 'foo', 'bar' );
 
 See L<meta_data|Redis::JobQueue::Job/meta_data> for more informations about
 the jobs metadata.
@@ -1328,11 +1352,11 @@ The following examples illustrate uses of the C<get_job_ids> method:
     # filtering the identifiers of jobs data structures
     @ids = $jq->get_job_ids( queue => 'some_queue' );
     # or
-    @ids = $jq->scheduled_job_ids( queue => [ 'foo_queue', 'bar_queue' ] );
+    @ids = $jq->get_job_ids( queue => [ 'foo_queue', 'bar_queue' ] );
     # or
     @ids = $jq->get_job_ids( status => STATUS_COMPLETED );
     # or
-    @ids = $jq->scheduled_job_ids( status => [ STATUS_COMPLETED, STATUS_FAILED ] );
+    @ids = $jq->get_job_ids( status => [ STATUS_COMPLETED, STATUS_FAILED ] );
 
     # filter the IDs are in the queues
     @ids = $jq->get_job_ids( queued => 1, queue => 'some_queue' );
@@ -1368,11 +1392,11 @@ The following examples illustrate uses of the C<quit> method:
 =head3 C<queue_status>
 
 Gets queue status from the Redis server.
-Queue name is obtained from the argument. The argument can be either a 
-string representing a queue name or a 
+Queue name is obtained from the argument. The argument can be either a
+string representing a queue name or a
 L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
 
-Returns a reference to a hash describing state of the queue or a reference 
+Returns a reference to a hash describing state of the queue or a reference
 to an empty hash when the queue wasn't found.
 
 The following examples illustrate uses of the C<queue_status> method:
@@ -1565,10 +1589,6 @@ This example shows a possible treatment for possible errors.
     use Redis::JobQueue qw(
         DEFAULT_SERVER
         DEFAULT_PORT
-        STATUS_CREATED
-        STATUS_WORKING
-        STATUS_COMPLETED
-        STATUS_FAILED
 
         E_NO_ERROR
         E_MISMATCH_ARG
@@ -1577,6 +1597,11 @@ This example shows a possible treatment for possible errors.
         E_MAX_MEMORY_LIMIT
         E_JOB_DELETED
         E_REDIS
+        );
+    use Redis::JobQueue::Job qw(
+        STATUS_CREATED
+        STATUS_WORKING
+        STATUS_COMPLETED
         );
 
     my $server = DEFAULT_SERVER.':'.DEFAULT_PORT;   # the Redis Server
@@ -1605,11 +1630,6 @@ This example shows a possible treatment for possible errors.
             #sleep 60;
             # and return code to repeat the operation
             #return "to repeat";
-        }
-        elsif ( $jq->last_errorcode == E_MAX_MEMORY_LIMIT )
-        {
-            # For example, return code to restart the server
-            #return "to restart the redis server";
         }
         elsif ( $jq->last_errorcode == E_JOB_DELETED )
         {
@@ -1695,13 +1715,13 @@ This example shows a possible treatment for possible errors.
         {
             my $id = $job->id;
 
-            my $status = $jq->get_job_status( $id );
+            my $status = $jq->get_job_data( $id, 'status' );
             print "Job '", $id, "' was '$status' status\n";
 
             $job->status( STATUS_WORKING );
             $jq->update_job( $job );
 
-            $status = $jq->get_job_status( $id );
+            $status = $jq->get_job_data( $id, 'status' );
             print "Job '", $id, "' has new '$status' status\n";
 
             # do my stuff
@@ -1717,7 +1737,7 @@ This example shows a possible treatment for possible errors.
             $job->status( STATUS_COMPLETED );
             $jq->update_job( $job );
 
-            $status = $jq->get_job_status( $id );
+            $status = $jq->get_job_data( $id, 'status' );
             print "Job '", $id, "' has last '$status' status\n";
         }
     };
@@ -1728,13 +1748,13 @@ This example shows a possible treatment for possible errors.
 
     eval {
         # For example:
-        # my $status = $jq->get_job_status( $ARGV[0] );
+        # my $status = $jq->get_job_data( $ARGV[0], 'status' );
         # or:
         my @ids = $jq->get_job_ids;
 
         foreach my $id ( @ids )
         {
-            my $status = $jq->get_job_status( $id );
+            my $status = $jq->get_job_data( $id, 'status' );
             print "Job '$id' has '$status' status\n";
         }
     };
@@ -1750,7 +1770,7 @@ This example shows a possible treatment for possible errors.
 
         foreach my $id ( @ids )
         {
-            my $status = $jq->get_job_status( $id );
+            my $status = $jq->get_job_data( $id, 'status' );
             print "Job '$id' has '$status' status\n";
 
             if ( $status eq STATUS_COMPLETED )
@@ -1868,24 +1888,26 @@ you have the following packages installed before you install C<Redis::JobQueue>
 package:
 
     Data::UUID
+    Digest::SHA1
+    List::MoreUtils
     Mouse
     Params::Util
     Redis
+    Storable
 
 C<Redis::JobQueue> package has the following optional dependencies:
 
     Net::EmptyPort
-    Test::Distribution
+    Test::Deep
     Test::Exception
-    Test::Kwalitee
-    Test::Perl::Critic
-    Test::Pod
-    Test::Pod::Coverage
+    Test::NoWarnings
     Test::RedisServer
 
 If the optional modules are missing, some "prereq" tests are skipped.
 
 =head1 BUGS AND LIMITATIONS
+
+Need a Redis server version 2.6 or higher as module uses Redis Lua scripting.
 
 The use of C<maxmemory-police all*> in the C<redis.conf> file could lead to
 a serious (but hard to detect) problem as Redis server may delete

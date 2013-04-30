@@ -11,18 +11,19 @@ use warnings;
 use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
-    STATUS_CREATED
-    STATUS_WORKING
-    STATUS_COMPLETED
 
     E_NO_ERROR
     E_MISMATCH_ARG
     E_DATA_TOO_LARGE
     E_NETWORK
     E_MAX_MEMORY_LIMIT
-    EMAXMEMORYPOLICY
     E_JOB_DELETED
     E_REDIS
+    );
+use Redis::JobQueue::Job qw(
+    STATUS_CREATED
+    STATUS_WORKING
+    STATUS_COMPLETED
     );
 
 my $server = DEFAULT_SERVER.":".DEFAULT_PORT;   # the Redis Server
@@ -55,12 +56,6 @@ sub exception {
     {
         # For example, return code to restart the server
         #return "to restart the redis server";
-    }
-    elsif ( $jq->last_errorcode == EMAXMEMORYPOLICY )
-    {
-        # For example, return code to recreate the job
-        my $id = $err =~ /^(\S+)/;
-        #return "to recreate $id";
     }
     elsif ( $jq->last_errorcode == E_JOB_DELETED )
     {
@@ -150,13 +145,13 @@ eval {
     {
         my $id = $job->id;
 
-        my $status = $jq->get_job_status( $id );
+        my $status = $jq->get_job_data( $id, 'status' );
         print "Job '", $id, "' was '$status' status\n";
 
         $job->status( STATUS_WORKING );
         $jq->update_job( $job );
 
-        $status = $jq->get_job_status( $id );
+        $status = $jq->get_job_data( $id, 'status' );
         print "Job '", $id, "' has new '$status' status\n";
 
         # do my stuff
@@ -172,7 +167,7 @@ eval {
         $job->status( STATUS_COMPLETED );
         $jq->update_job( $job );
 
-        $status = $jq->get_job_status( $id );
+        $status = $jq->get_job_data( $id, 'status' );
         print "Job '", $id, "' has last '$status' status\n";
     }
 };
@@ -184,13 +179,13 @@ exception( $jq, $@ ) if $@;
 
 eval {
     # For example:
-    # my $status = $jq->get_job_status( $ARGV[0] );
+    # my $status = $jq->get_job_data( $ARGV[0], 'status' );
     # or:
     my @ids = $jq->get_job_ids;
 
     foreach my $id ( @ids )
     {
-        my $status = $jq->get_job_status( $id );
+        my $status = $jq->get_job_data( $id, 'status' );
         print "Job '$id' has '$status' status\n";
     }
 };
@@ -206,7 +201,7 @@ eval {
 
     foreach my $id ( @ids )
     {
-        my $status = $jq->get_job_status( $id );
+        my $status = $jq->get_job_data( $id, 'status' );
         print "Job '$id' has '$status' status\n";
 
         if ( $status eq STATUS_COMPLETED )

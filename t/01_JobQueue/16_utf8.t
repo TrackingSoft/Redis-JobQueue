@@ -223,7 +223,7 @@ my $file_bin    = "\x61\xE2\x98\xBA\x62";
             {
                 lives_ok { $added_job = $jq->add_job( $pre_job ) } 'set utf8';
 
-                my $status = $jq->get_job_status( $added_job );
+                my $status = $jq->get_job_data( $added_job, 'status' );
                 is_deeply $status, $pre_job->{status}, 'correct loaded status';
 
                 my $new_job = $jq->load_job( $added_job );
@@ -270,7 +270,7 @@ my $file_bin    = "\x61\xE2\x98\xBA\x62";
             {
                 lives_ok { $added_job = $jq->add_job( $pre_job ) } 'set utf8';
 
-                my $status = $jq->get_job_status( $added_job );
+                my $status = $jq->get_job_data( $added_job, 'status' );
                 is_deeply $status, $pre_job->{status}, 'correct loaded status';
 
                 my $new_job = $jq->load_job( $added_job );
@@ -415,7 +415,7 @@ my $file_bin    = "\x61\xE2\x98\xBA\x62";
 
             lives_ok { $added_job = $jq->add_job( $pre_job ) } 'set utf8';
 
-            my $new_status = $jq->get_job_status( $added_job );
+            my $new_status = $jq->get_job_data( $added_job, 'status' );
             utf8::decode( $new_status );
             is_deeply $new_status, $data, 'correct loaded status';
 
@@ -466,7 +466,7 @@ my $file_bin    = "\x61\xE2\x98\xBA\x62";
 
             lives_ok { $added_job = $jq->add_job( $pre_job ) } 'set utf8';
 
-            my $new_status = $jq->get_job_status( $added_job );
+            my $new_status = $jq->get_job_data( $added_job, 'status' );
             $new_status = $redis->{encoding} ? $new_status : Encode::decode_utf8( $new_status );
             is_deeply $new_status, $data, 'correct loaded status';
 
@@ -514,7 +514,7 @@ my $file_bin    = "\x61\xE2\x98\xBA\x62";
 
             lives_ok { $added_job = $jq->add_job( $pre_job ) } 'set utf8';
 
-            my $new_status = $jq->get_job_status( $added_job );
+            my $new_status = $jq->get_job_data( $added_job, 'status' );
             utf8::decode( $new_status );
             is_deeply $new_status, $data, 'correct loaded status';
 

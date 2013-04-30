@@ -132,7 +132,16 @@ foreach my $key ( keys %$meta_data )
 {
     is_deeply $meta_data->{ $key }, $jq->get_job_meta_data( $added_job->id, $key ), 'correct loaded value';
 }
-is $jq->get_job_meta_data( $added_job->id, 'fake' ), undef, '<undef> for non-existent data';
+is( ( $jq->get_job_meta_data( $added_job->id, 'fake' ) )[0], undef, '<undef> for non-existent data' );
+
+my @arr_k = sort keys %$meta_data;
+my @arr_v;
+push( @arr_v, $meta_data->{ $_ } ) foreach @arr_k;
+my @arr_res = $jq->get_job_meta_data( $added_job->id, @arr_k );
+is_deeply \@arr_res, \@arr_v, 'correct loaded value';
+# scalar context
+$meta_data = $jq->get_job_meta_data( $added_job->id, @arr_k );
+is_deeply $meta_data, $arr_v[0], 'correct loaded value';
 
 # get_job_ids
 is scalar( $jq->get_job_ids ), 1, 'there is a single job';

@@ -25,6 +25,8 @@ you have the following packages installed before you install
 Redis::JobQueue :
 
    Data::UUID
+   Digest::SHA1
+   List::MoreUtils
    Mouse
    Params::Util
    Redis

@@ -31,12 +31,6 @@ use Redis::JobQueue qw(
     DEFAULT_TIMEOUT
 
     E_NO_ERROR
-    E_MISMATCH_ARG
-    E_DATA_TOO_LARGE
-    E_NETWORK
-    E_MAX_MEMORY_LIMIT
-    E_JOB_DELETED
-    E_REDIS
     );
 
 use Redis::JobQueue::Job qw(

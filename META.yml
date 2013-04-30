@@ -23,6 +23,8 @@ no_index:
     - inc
 requires:
   Data::UUID: 1.217
+  Digest::SHA1: 2.13
+  List::MoreUtils: 0.33
   Mouse: 0.97
   Params::Util: 1.07
   Redis: 1.926

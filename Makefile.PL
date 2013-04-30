@@ -14,6 +14,8 @@ my %config = (
 # more to the list $Module::CoreList::version{5.010}
     PREREQ_PM                   => {
         'Data::UUID'            => 1.217,
+        'Digest::SHA1'          => 2.13,
+        'List::MoreUtils'       => 0.33,
         'Mouse'                 => 0.97,
         'Params::Util'          => 1.07,
         'Redis'                 => 1.926,

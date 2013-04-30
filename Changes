@@ -1,23 +1,24 @@
 Revision history for Redis::JobQueue package
 
-1.00  Wed Apr 30 2013
+1.00  Wed Apr  30 2013
 
     !!! This is a major upgrade that changes API. It's strongly advised to study
     revised documentation and update your code where necessary !!!
 
     CHANGES:
+    - Need a Redis server version 2.6 or higher as module uses Redis Lua scripting.
     - Fields 'result' and 'workload':
       It is possible to use any data structure (SCALAR, HASH, ARRAY, OBJECT).
       It is automatically serialized.
       Allowable size of the data is determined based on the size of the
       serialized string.
-    - Added standard fields:
+    - Added standard job fields:
       Times when job was: 'created', 'started', 'completed', 'updated'
       (user settable),
       Job 'progress' (0...1) and arbitrary status 'message'.
       Appropriate methods added.
-    - The 'updated' field automatically changes with every change to a job.
-    - Added a method 'elapsed'.
+    - The job 'updated' field automatically changes with every change to a job.
+    - Added a method 'Redis::JobQueue::Job->elapsed'.
     - A set of constants to reflect job status:
       CREATED, WORKING, FAILED, COMPLETED, the user can specify own value
       for status.
@@ -30,6 +31,9 @@ Revision history for Redis::JobQueue package
     - Constant MAX_DATASIZE moved to module Redis::JobQueue.
     - No longer used constants EMAXMEMORYPOLICY, STATUS_DELETED, EXPIRE_DELETED.
     - Added a method 'queue_status' for monitoring the state of the queue.
+    - Method 'get_job_status' removed.
+      Method 'get_job_data' added instead for receiving data from the standard
+      set of fields.
     - Method 'delete_job' removes Redis data structures that are associated
       with the job.
     - Method 'get_jobs' renamed to 'get_job_ids'.
@@ -42,7 +46,7 @@ Revision history for Redis::JobQueue package
       to 'encoding => undef'.
     - Added test using 'utf8' data (t/01_JobQueue/t_utf8.t).
     - Added new functionality testing.
-    - Change to user-friendly constant names
+    - Change to user-friendly constant names.
 
 0.16  Tue Mar  12 2013
     CHANGES:

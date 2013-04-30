@@ -92,7 +92,7 @@ note "queue status = ", Dumper( $qstatus );
 
 #ok $qstatus->{avg_lifetime}, 'avg_lifetime present';
 is $qstatus->{length}, 4, 'correct length';
-is $qstatus->{all_jobs}, 4, 'correct all_job';
+is $qstatus->{all_jobs}, 4, 'correct all_jobs';
 ok $qstatus->{lifetime}, 'lifetime present';
 ok $qstatus->{max_job_age}, 'max_job_age present';
 ok $qstatus->{min_job_age}, 'min_job_age present';

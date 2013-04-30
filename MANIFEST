@@ -16,7 +16,6 @@ t/00_Job/05_meta_data.t
 t/01_JobQueue/00_compile.t
 t/01_JobQueue/01_new.t
 t/01_JobQueue/02_add_job.t
-t/01_JobQueue/03_get_job_status.t
 t/01_JobQueue/04_load_job.t
 t/01_JobQueue/05_get_next_job.t
 t/01_JobQueue/06_update_job.t
@@ -26,8 +25,8 @@ t/01_JobQueue/09_quit.t
 t/01_JobQueue/10_max_datasize.t
 t/01_JobQueue/11_last_errorcode.t
 t/01_JobQueue/12_timeout.t
-t/01_JobQueue/13_meta_data.t
-t/01_JobQueue/14_elapsed.t
+t/01_JobQueue/13_get_job_meta_data.t
+t/01_JobQueue/14_get_job_data.t
 t/01_JobQueue/15_queue_status.t
 t/01_JobQueue/16_utf8.t
 xt/author/92_vars.t
