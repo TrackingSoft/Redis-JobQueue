@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 56;
+use Test::More tests => 57;
 use Test::NoWarnings;
 
 use Redis::JobQueue::Job qw(
@@ -99,9 +99,14 @@ is $job->completed, 0,              'completed not set';
 is $job->elapsed, undef,            'elapsed not set';
 
 $job->status( STATUS_WORKING );
-ok $job->started,                   'started is set';
+my $started = $job->started;
+ok $started,                        'started is set';
 is $job->completed, 0,              'completed not set';
 ok defined( $job->elapsed ),        'elapsed is set';
+
+sleep 1;
+$job->status( STATUS_WORKING );
+is $job->started, $started,         'started set only once';
 
 foreach my $status ( ( STATUS_COMPLETED, STATUS_FAILED ) )
 {

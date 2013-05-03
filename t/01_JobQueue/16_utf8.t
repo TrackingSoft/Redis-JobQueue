@@ -320,7 +320,7 @@ my $file_bin    = "\x61\xE2\x98\xBA\x62";
 
             lives_ok { $added_job = $jq->add_job( $pre_job ) } 'set utf8';
 
-            my $foo = $jq->get_job_meta_data( $added_job, 'foo' );
+            my $foo = $jq->get_job_data( $added_job, 'foo' );
             is_deeply $foo, $pre_job->{meta_data}->{foo}, 'correct loaded foo';
 
             my $new_job = $jq->load_job( $added_job );
@@ -365,7 +365,7 @@ my $file_bin    = "\x61\xE2\x98\xBA\x62";
 
             lives_ok { $added_job = $jq->add_job( $pre_job ) } 'set utf8';
 
-            my $foo = $jq->get_job_meta_data( $added_job, 'foo' );
+            my $foo = $jq->get_job_data( $added_job, 'foo' );
             is_deeply $foo, $pre_job->{meta_data}->{foo}, 'correct loaded foo';
 
             my $new_job = $jq->load_job( $added_job );

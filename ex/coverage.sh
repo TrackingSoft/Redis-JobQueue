@@ -36,7 +36,7 @@ perl -MDevel::Cover t/01_JobQueue/09_quit.t
 perl -MDevel::Cover t/01_JobQueue/10_max_datasize.t
 perl -MDevel::Cover t/01_JobQueue/11_last_errorcode.t
 perl -MDevel::Cover t/01_JobQueue/12_timeout.t
-perl -MDevel::Cover t/01_JobQueue/13_get_job_meta_data.t
+perl -MDevel::Cover t/01_JobQueue/13_get_job_meta_fields.t
 perl -MDevel::Cover t/01_JobQueue/14_get_job_data.t
 perl -MDevel::Cover t/01_JobQueue/15_queue_status.t
 perl -MDevel::Cover t/01_JobQueue/16_utf8.t

@@ -1,12 +1,14 @@
 Revision history for Redis::JobQueue package
 
-1.00  Wed Apr  30 2013
+1.00  Mon May  07 2013
 
     !!! This is a major upgrade that changes API. It's strongly advised to study
     revised documentation and update your code where necessary !!!
 
     CHANGES:
-    - Need a Redis server version 2.6 or higher as module uses Redis Lua scripting.
+    - Needs Redis server version 2.6 or higher as module uses Redis Lua scripting.
+    - Improved handling of transactions.
+    - Method Redis::JobQueue::Job->job_attributes returns a sorted list.
     - Fields 'result' and 'workload':
       It is possible to use any data structure (SCALAR, HASH, ARRAY, OBJECT).
       It is automatically serialized.
@@ -27,7 +29,7 @@ Revision history for Redis::JobQueue package
       (additional information related to the job):
       It is automatically serialized.
       Methods 'Redis::JobQueue::Job->meta_data',
-      'Redis::JobQueue->get_job_meta_data'.
+      'Redis::JobQueue->get_job_meta_fields'.
     - Constant MAX_DATASIZE moved to module Redis::JobQueue.
     - No longer used constants EMAXMEMORYPOLICY, STATUS_DELETED, EXPIRE_DELETED.
     - Added a method 'queue_status' for monitoring the state of the queue.

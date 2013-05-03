@@ -18,6 +18,10 @@ our @EXPORT_OK  = qw(
 #-- load the modules -----------------------------------------------------------
 
 # Modules
+use Carp;
+use List::MoreUtils qw(
+    firstidx
+    );
 use List::Util qw(
     min
     );
@@ -203,7 +207,7 @@ sub modified_attributes {
 }
 
 sub job_attributes {
-    return map { $_->name eq '_meta_data' ? 'meta_data' : $_->name } grep { $_->name ne '_variability' } $meta->get_all_attributes;
+    return( sort map { $_->name eq '_meta_data' ? 'meta_data' : $_->name } grep { $_->name ne '_variability' } $meta->get_all_attributes );
 }
 
 sub elapsed {
@@ -215,7 +219,7 @@ sub elapsed {
     }
     else
     {
-        return;
+        return( undef );
     }
 }
 
@@ -227,12 +231,23 @@ sub meta_data {
     return $self->_meta_data if !defined $key;
 
     # metadata can be set with an external hash
-    $self->_meta_data( $key ) if defined _HASH0( $key );
+    if ( _HASH0( $key ) )
+    {
+        my @attributes = $self->job_attributes;
+        foreach my $field ( keys %$key )
+        {
+            confess 'The name of the metadata field the same as standart job field name'
+                if ( firstidx { $_ eq $field } @attributes ) != -1;
+        }
+        $self->_meta_data( $key );
+    }
 
     # getter
     return $self->_meta_data->{ $key } if !defined $val;
 
     # setter
+    confess 'The name of the metadata field the same as standart job field name'
+        if ( firstidx { $_ eq $key } $self->job_attributes ) != -1;
     $self->_meta_data->{ $key } = $val;
 
     # job data change
@@ -271,7 +286,7 @@ sub _variability_set {
     {
         my $new_status = shift;
         if      ( $new_status eq STATUS_CREATED )   { $self->created( time ) }
-        elsif   ( $new_status eq STATUS_WORKING )   { $self->started( time ) }
+        elsif   ( $new_status eq STATUS_WORKING )   { $self->started( time ) unless $self->started }
         elsif   ( $new_status eq STATUS_COMPLETED ) { $self->completed( time ) }
         elsif   ( $new_status eq STATUS_FAILED )    { $self->completed( time ) }
     }
@@ -528,6 +543,10 @@ For example:
         'other' => { a => 'b', c => 'd' },
         } );
 
+The name of the metadata fields should not match the standard names returned by
+L</job_attributes>.
+An invalid name causes die (C<confess>).
+
 =head3 C<clear_variability( @fields )>
 
 Resets the sign of any specified attributes that have been changed.
@@ -539,7 +558,7 @@ Returns a list of names of the object attributes that have been modified.
 
 =head3 C<job_attributes>
 
-Returns a list of the names of object attributes.
+Returns a sorted list of the names of object attributes.
 
 =head1 EXPORT
 

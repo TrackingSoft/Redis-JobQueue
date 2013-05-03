@@ -25,12 +25,14 @@ BEGIN {
     plan skip_all => "because Net::EmptyPort required for testing" if $@;
 }
 
+use List::Util qw(
+    shuffle
+    );
 use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
     );
-
 use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
@@ -71,7 +73,9 @@ SKIP: {
 
 # For Test::RedisServer
 $real_redis->quit;
-$redis = Test::RedisServer->new( conf => { port => Net::EmptyPort::empty_port( 32637 ) } );
+$redis = Test::RedisServer->new( conf => {
+    port => Net::EmptyPort::empty_port( 32637 ),
+    } );
 isa_ok( $redis, 'Test::RedisServer' );
 
 my ( $jq, $job, @jobs, @new_jobs );
@@ -105,6 +109,8 @@ my @statuses = (
 
 @jobs = $jq->get_job_ids;
 is scalar( @jobs ), 0, 'there are no jobs';
+@jobs = $jq->get_job_ids( queue => [ 'q1', 'q2' ], status => [ 's1', 's2', 's3' ] );
+is scalar( @jobs ), 0, 'there are no jobs';
 
 foreach my $status ( @statuses )
 {
@@ -126,6 +132,13 @@ is scalar( @jobs ), 0, 'job not found';
 @jobs = $jq->get_job_ids( status => \@statuses );
 is scalar( @jobs ), scalar( @statuses ), 'jobs filtered';
 
+my @heap = ( STATUS_CREATED, STATUS_FAILED, 'fake', [ 'bad thibg' ] );
+for ( 1..100 )
+{
+    @jobs = $jq->get_job_ids( status => [ shuffle @heap ] );
+    is scalar( @jobs ), 2, 'all jobs found';
+}
+
 #-- Filter by 'queue'
 
 $pre_job->{queue} = 'next_queue';
@@ -136,6 +149,12 @@ foreach my $status ( @statuses )
     $jq->update_job( $job );
 }
 
+for ( 1..100 )
+{
+    @jobs = $jq->get_job_ids( status => [ shuffle @heap ] );
+    is scalar( @jobs ), 4, 'all jobs found';
+}
+
 # not queued
 @jobs = $jq->get_job_ids( queue => 'next_queue' );
 is scalar( @jobs ), scalar( @statuses ), 'jobs filtered';
@@ -143,6 +162,8 @@ is scalar( @jobs ), scalar( @statuses ), 'jobs filtered';
 is scalar( @jobs ), scalar( @statuses ) * 2, 'jobs filtered';
 
 # queued
+@jobs = $jq->get_job_ids( queued => 1 );
+is scalar( @jobs ), scalar( @statuses ) * 2, 'jobs filtered';
 @jobs = $jq->get_job_ids( queued => 1, queue => 'next_queue' );
 is scalar( @jobs ), scalar( @statuses ), 'jobs filtered';
 @jobs = $jq->get_job_ids( queued => 1, queue => [ 'lovely_queue', 'next_queue' ] );

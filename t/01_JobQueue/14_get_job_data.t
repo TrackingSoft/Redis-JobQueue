@@ -230,6 +230,8 @@ is $data, $job->meta_data( 'foo' ), "metadata present";
 @arr_data = $jq->get_job_data( $job, @job_fields, 'foo' );
 is $arr_data[ $#arr_data ], $job->meta_data( 'foo' ),           'metadata present';
 
+is $jq->get_job_data( 'fake' ), undef, 'job not exists';
+
 # internal recalculations
 
 $job->status( STATUS_WORKING );
@@ -273,6 +275,29 @@ foreach my $status ( ( STATUS_COMPLETED, STATUS_FAILED ) )
     ok( ( $jq->get_job_data( $job, 'started' ) )[0],            'started is set' );
     ok( ( $jq->get_job_data( $job, 'completed' ) )[0],          'completed is set' );
     ok( defined( ( $jq->get_job_data( $job, 'elapsed' ) )[0] ), 'elapsed is set' );
+}
+
+lives_ok { $jq->get_job_data( $job->id, @job_fields) } "expecting to live - all standard fields";
+
+# good and bad fields
+$job = $jq->add_job( $pre_job );
+isa_ok( $job, 'Redis::JobQueue::Job');
+$job->meta_data( {
+        foo     => 12,
+        } );
+ok $jq->update_job( $job ),                                     'job updated';
+foreach my $fields (
+    [ 'fake', 'status', 'foo', [ 'bad thing' ] ],
+    [ 'status', 'fake', [ 'bad thing' ], 'foo' ],
+    [ [ 'bad thing' ], 'status', 'foo', 'fake' ],
+    [ 'foo', [ 'bad thing' ], 'status', 'fake' ],
+    )
+{
+    my @result = $jq->get_job_data( $job, @$fields );
+    is $result[ firstidx { $_ eq 'status' } @$fields ], $job->status,               'standard field OK';
+    is $result[ firstidx { $_ eq 'foo' }    @$fields ], $job->meta_data( 'foo' ),   'meta_data field OK';
+    is $result[ firstidx { $_ eq 'fake' }   @$fields ], undef,                      'fake field OK';
+    is $result[ firstidx { ref( $_ ) }      @$fields ], undef,                      'bad field OK';
 }
 
 # invalid arguments

@@ -98,9 +98,15 @@ isa_ok( $job, 'Redis::JobQueue::Job');
 
 ok $jq->load_job( $job->id ), "job does exist";
 my $id = $job->id;
-ok $jq->delete_job( $job ), "job deleted";
+is $jq->delete_job( $job ), 1, "job deleted";
 $job = $jq->load_job( $job->id );
 is $job, undef, "job undefined (job does not exist)";
+is $jq->delete_job( $id ), undef, "job deleted already";
+
+$pre_job->{meta_data} = { foo => 'bar' };
+$job = $jq->add_job( $pre_job );
+isa_ok( $job, 'Redis::JobQueue::Job');
+is $jq->delete_job( $job ), 2, "job deleted (meta_data present)";
 
 $job = $jq->add_job( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');

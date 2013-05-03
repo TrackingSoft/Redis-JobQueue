@@ -123,26 +123,6 @@ $new_job = $jq->load_job( $added_job );
 isa_ok( $new_job, 'Redis::JobQueue::Job');
 is_deeply $new_job->meta_data, $added_job->meta_data, 'correct loaded hash';
 
-# get_job_meta_data
-my $meta_data = $jq->get_job_meta_data( $added_job );
-cmp_deeply $added_job->meta_data, $meta_data, 'correct loaded hash';
-$meta_data = $jq->get_job_meta_data( $added_job->id );
-cmp_deeply $added_job->meta_data, $meta_data, 'correct loaded hash';
-foreach my $key ( keys %$meta_data )
-{
-    is_deeply $meta_data->{ $key }, $jq->get_job_meta_data( $added_job->id, $key ), 'correct loaded value';
-}
-is( ( $jq->get_job_meta_data( $added_job->id, 'fake' ) )[0], undef, '<undef> for non-existent data' );
-
-my @arr_k = sort keys %$meta_data;
-my @arr_v;
-push( @arr_v, $meta_data->{ $_ } ) foreach @arr_k;
-my @arr_res = $jq->get_job_meta_data( $added_job->id, @arr_k );
-is_deeply \@arr_res, \@arr_v, 'correct loaded value';
-# scalar context
-$meta_data = $jq->get_job_meta_data( $added_job->id, @arr_k );
-is_deeply $meta_data, $arr_v[0], 'correct loaded value';
-
 # get_job_ids
 is scalar( $jq->get_job_ids ), 1, 'there is a single job';
 
@@ -156,5 +136,45 @@ ok !$jq->_call_redis( 'EXISTS', $jq->_get_meta_data_key( $key ) ), 'metadata has
 
 # get_job_ids
 is scalar( $jq->get_job_ids ), 0, 'no job';
+
+#-- get_job_meta_fields
+
+$pre_job = {
+    id          => '4BE19672-C503-11E1-BF34-28791473A258',
+    queue       => 'lovely_queue',
+    job         => 'strong_job',
+    expire      => 12*60*60,
+    status      => 'created',
+    workload    => 'Some stuff up to 512MB long',
+    result      => \'JOB result comes here, up to 512MB long',
+    };
+
+$job = Redis::JobQueue::Job->new( $pre_job );
+
+dies_ok { $jq->get_job_meta_fields() } 'expecting to die - no args';
+
+my @mfields = $jq->get_job_meta_fields( $job );
+is scalar( @mfields ), 0, 'no metadata';
+
+$pre_job->{meta_data} = {
+        foo     => 12,
+        bar     => [ 13, 14, 15 ],
+        other   => { a => 'b', c => 'd' },
+        s_ref   => \'Hello, Deeply World',
+        strble  => Storable::nfreeze( \'Data for Storable' ),
+        rstrble => \Storable::nfreeze( \'Data for Storable' ),
+        };
+
+$jq->_redis->flushall;
+$job = $jq->add_job( $pre_job );
+@mfields = sort $jq->get_job_meta_fields( $job );
+my @arr_k = sort keys %{ $pre_job->{meta_data} };
+ok scalar( @mfields ), 'metadata present';
+is_deeply( \@mfields, \@arr_k, 'all meta fields present' );
+
+foreach my $id_source ( ( undef, "", \"scalar", [] ) )
+{
+    dies_ok { $jq->get_job_meta_fields( $id_source ) } 'expecting to die ('.( $id_source // '<undef>' ).')';
+}
 
 };

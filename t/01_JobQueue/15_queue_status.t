@@ -11,6 +11,11 @@ plan "no_plan";
 use Test::NoWarnings;
 
 BEGIN {
+    eval "use Test::Exception";                 ## no critic
+    plan skip_all => "because Test::Exception required for testing" if $@;
+}
+
+BEGIN {
     eval "use Test::RedisServer";               ## no critic
     plan skip_all => "because Test::RedisServer required for testing" if $@;
 }
@@ -39,7 +44,7 @@ my $redis;
 my $real_redis;
 my $port = Net::EmptyPort::empty_port( 32637 ); # 32637-32766 Unassigned
 my $exists_real_redis = 1;
-#eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT ) };
+#    eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT ) };
 if ( !$real_redis )
 {
     $exists_real_redis = 0;
@@ -61,10 +66,13 @@ SKIP: {
     skip( "Redis server is unavailable", 1 ) unless ( !$@ and $real_redis and $real_redis->ping );
 
 $real_redis->quit;
+#    $real_redis->flushall;
+#    $redis = $real_redis;
 # Test::RedisServer does not use timeout = 0
 $redis = Test::RedisServer->new( conf => { port => Net::EmptyPort::empty_port( 32637 ) }, timeout => 3 ) unless $redis;
 isa_ok( $redis, 'Test::RedisServer' );
 
+#    my $jq = Redis::JobQueue->new();
 my $jq = Redis::JobQueue->new( @redis_params );
 isa_ok( $jq, 'Redis::JobQueue' );
 
@@ -85,42 +93,44 @@ for ( 1..5 )
     sleep 1;
 }
 $jq->get_next_job( queue => $pre_job->{queue} );
+
+foreach my $queue ( ( $pre_job->{queue}, $job ) )
+{
+    my $qstatus = $jq->queue_status( $queue );
+    note "queue status = ", Dumper( $qstatus );
+
+    is $qstatus->{length}, 4, 'correct length';
+    is $qstatus->{all_jobs}, 5, 'correct all_jobs';
+    ok $qstatus->{lifetime}, 'lifetime present';
+    ok $qstatus->{max_job_age}, 'max_job_age present';
+    ok $qstatus->{min_job_age}, 'min_job_age present';
+}
+
 $jq->delete_job( $job );
 
-my $qstatus = $jq->queue_status( $pre_job->{queue} );
+foreach my $queue ( ( $pre_job->{queue}, $job ) )
+{
+    my $qstatus = $jq->queue_status( $queue );
+    note "queue status = ", Dumper( $qstatus );
+
+    is $qstatus->{length}, 4, 'correct length';
+    is $qstatus->{all_jobs}, 4, 'correct all_jobs';
+    ok $qstatus->{lifetime}, 'lifetime present';
+    ok $qstatus->{max_job_age}, 'max_job_age present';
+    ok $qstatus->{min_job_age}, 'min_job_age present';
+}
+
+my $qstatus = $jq->queue_status( 'something_wrong' );
 note "queue status = ", Dumper( $qstatus );
+is $qstatus->{all_jobs}, 0, 'correct all_jobs';
+is $qstatus->{length}, 0, 'correct length';
+is scalar( keys %$qstatus ), 2, 'correct length';
 
-#ok $qstatus->{avg_lifetime}, 'avg_lifetime present';
-is $qstatus->{length}, 4, 'correct length';
-is $qstatus->{all_jobs}, 4, 'correct all_jobs';
-ok $qstatus->{lifetime}, 'lifetime present';
-ok $qstatus->{max_job_age}, 'max_job_age present';
-ok $qstatus->{min_job_age}, 'min_job_age present';
-#ok( ( $qstatus->{avg_lifetime} > $qstatus->{min_job_age} and $qstatus->{avg_lifetime} < $qstatus->{max_job_age} ), 'correct times' );
+dies_ok { $jq->queue_status } 'expecting to die - no args';
 
-# The correctness of the 'created', 'started', 'completed' more detailed checked by other tests
-
-#is scalar( keys %{ $qstatus->{jobs} } ), 5, 'records of all the jobs are present';
-#
-#my ( $exists, $in_queue, $lifetime, $created, $started, $completed, $finishing, $processing );
-#foreach my $id ( keys %{ $qstatus->{jobs} } )
-#{
-#    ++$exists       if $qstatus->{jobs}->{ $id }->{exists};
-#    ++$in_queue     if $qstatus->{jobs}->{ $id }->{in_queue};
-#    ++$lifetime     if $qstatus->{jobs}->{ $id }->{lifetime};
-#    ++$created      if $qstatus->{jobs}->{ $id }->{created};
-#    ++$started      if $qstatus->{jobs}->{ $id }->{started};
-#    ++$completed    if $qstatus->{jobs}->{ $id }->{completed};
-#    ++$finishing    if exists $qstatus->{jobs}->{ $id }->{finishing};
-#    ++$processing   if exists $qstatus->{jobs}->{ $id }->{processing};
-#}
-#is $exists,     4, "the correct amount of 'exists'";
-#is $in_queue,   4, "the correct amount of 'in_queue'";
-#is $lifetime,   4, "the correct amount of 'lifetime'";
-#is $created,    4, "the correct amount of 'created'";
-#is $started,    3, "the correct amount of 'started'";
-#is $completed,  2, "the correct amount of 'completed'";
-#is $finishing,  2, "the correct amount of 'finishing'";
-#is $processing, 2, "the correct amount of 'processing'";
+foreach my $queue ( ( undef, "", \"scalar", [] ) )
+{
+    dies_ok { $jq->queue_status( $queue ) } 'expecting to die ('.( $queue // '<undef>' ).')';
+}
 
 };

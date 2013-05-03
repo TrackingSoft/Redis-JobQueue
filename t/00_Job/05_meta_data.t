@@ -10,6 +10,11 @@ use Test::More;
 plan "no_plan";
 use Test::NoWarnings;
 
+BEGIN {
+    eval "use Test::Exception";                 ## no critic
+    plan skip_all => "because Test::Exception required for testing" if $@;
+}
+
 use List::MoreUtils qw(
     firstidx
     );
@@ -63,3 +68,10 @@ $job->meta_data( 'foo', 16 );
 my $next_job = Redis::JobQueue::Job->new( $job );
 isa_ok( $next_job, 'Redis::JobQueue::Job');
 is_deeply $next_job->meta_data, $job->meta_data, 'correct metadata';
+
+# bad metadata field name
+foreach my $field ( @attributes )
+{
+    dies_ok { $job->meta_data( $field, 'something' ) } 'expecting to die - bad metadata field name';
+    dies_ok { $job->meta_data( { $field => 'something' } ) } 'expecting to die - bad metadata field name';
+}

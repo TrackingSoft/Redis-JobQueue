@@ -25,7 +25,7 @@ t/01_JobQueue/09_quit.t
 t/01_JobQueue/10_max_datasize.t
 t/01_JobQueue/11_last_errorcode.t
 t/01_JobQueue/12_timeout.t
-t/01_JobQueue/13_get_job_meta_data.t
+t/01_JobQueue/13_get_job_meta_fields.t
 t/01_JobQueue/14_get_job_data.t
 t/01_JobQueue/15_queue_status.t
 t/01_JobQueue/16_utf8.t
