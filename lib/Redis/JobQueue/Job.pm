@@ -19,9 +19,6 @@ our @EXPORT_OK  = qw(
 
 # Modules
 use Carp;
-use List::MoreUtils qw(
-    firstidx
-    );
 use List::Util qw(
     min
     );
@@ -206,8 +203,10 @@ sub modified_attributes {
     return grep { $self->_variability->{ $_ } } $self->job_attributes;
 }
 
+my %_attributes = map { ( $_->name eq '_meta_data' ? 'meta_data' : $_->name ) => 1 } grep { $_->name ne '_variability' } $meta->get_all_attributes;
+
 sub job_attributes {
-    return( sort map { $_->name eq '_meta_data' ? 'meta_data' : $_->name } grep { $_->name ne '_variability' } $meta->get_all_attributes );
+    return( sort keys %_attributes );
 }
 
 sub elapsed {
@@ -233,11 +232,10 @@ sub meta_data {
     # metadata can be set with an external hash
     if ( _HASH0( $key ) )
     {
-        my @attributes = $self->job_attributes;
         foreach my $field ( keys %$key )
         {
             confess 'The name of the metadata field the same as standart job field name'
-                if ( firstidx { $_ eq $field } @attributes ) != -1;
+                if exists $_attributes{ $field };
         }
         $self->_meta_data( $key );
     }
@@ -247,7 +245,7 @@ sub meta_data {
 
     # setter
     confess 'The name of the metadata field the same as standart job field name'
-        if ( firstidx { $_ eq $key } $self->job_attributes ) != -1;
+        if exists $_attributes{ $key };
     $self->_meta_data->{ $key } = $val;
 
     # job data change

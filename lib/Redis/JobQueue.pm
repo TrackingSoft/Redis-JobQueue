@@ -94,6 +94,7 @@ our @ERROR = (
 
 my @job_fields = Redis::JobQueue::Job->job_attributes;  # sorted list
 splice @job_fields, ( firstidx { $_ eq 'meta_data' } @job_fields ), 1;
+my %job_fnames = map { $_ => 1 } @job_fields;
 
 my $uuid = new Data::UUID;
 
@@ -513,15 +514,16 @@ sub get_job_data {
     my $job_id      = $self->_get_job_id( $id_source );
     my $data_fields = scalar @data_keys;
     my @right_keys  = map { _STRING( $_ ) || '' } @data_keys;
+    my %right_names = map { $_ => 1 } grep { $_ } @right_keys;
 
     my @additional = ();
     if ( $data_fields )
     {
-        if ( ( firstidx { $_ eq 'elapsed' } @right_keys ) != -1 )
+        if ( exists $right_names{elapsed} )
         {
             foreach my $field ( qw( started completed ) )
             {
-                push @additional, $field if ( firstidx { $_ eq $field } @right_keys ) == -1;
+                push @additional, $field if !exists $right_names{ $field };
             }
         }
     }
@@ -547,7 +549,7 @@ sub get_job_data {
     for ( my $i = 0; $i < $total_fields; ++$i )
     {
         my $field = $all_fields[ $i ];
-        if ( $field ne 'elapsed' and ( firstidx { $_ eq $field } @job_fields ) == -1 || $field =~ /^(workload|result)$/ )
+        if ( $field ne 'elapsed' and ( !exists( $job_fnames{ $field } ) || $field =~ /^(workload|result)$/ ) )
         {
             $data[ $i ] = ${ thaw( $data[ $i ] ) } if $data[ $i ];
         }
