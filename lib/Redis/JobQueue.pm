@@ -1187,6 +1187,39 @@ Simple methods for organizing producer, worker, and consumer clients.
 
 =back
 
+=head3 Atributes
+
+=over
+
+=item C<id> 
+
+An id that uniquely identifies the job, scalar
+
+=item C<queue>
+
+Queue name in which job is placed, scalar
+
+=item C<expire> 
+
+For how long (seconds) job data structures will be kept in memory
+
+=item C<status> 
+
+Job status, scalar. See L<Redis::JobQueue::Job> for the list of pre-defined statuses.
+Can be also set to any arbitrary value.
+
+=item C<workload>, C<result>
+
+User-set data structures which will be serialized before stored in Redis.
+Suitable for passing large amounts of data.
+
+=item *
+
+Any other custom-named field passed to constructor or update_job method will be stored as meta-data scalar in Redis.
+Suitable for storing scalar values with fast access (no serialization).
+
+=back
+
 =head2 CONSTRUCTOR
 
 =head3 C<new( redis =E<gt> $server, timeout =E<gt> $timeout )>
@@ -1196,6 +1229,8 @@ the Redis server.
 If invoked without any arguments, the constructor C<new> creates and returns
 a C<Redis::JobQueue> object that is configured with the default settings and uses
 local C<redis> server.
+
+=head3
 
 Caveats related to connection with Redis server
 
@@ -1323,7 +1358,7 @@ The following examples illustrate uses of the C<get_job_data> method:
 You can specify a list of names of key data or metadata.
 In this case it returns the corresponding list of data. For example:
 
-    my @data = $jq->get_job_data( $job->id, 'status', 'foo' );
+    my ( $status, $foo ) = $jq->get_job_data( $job->id, 'status', 'foo' );
 
 See L<meta_data|Redis::JobQueue::Job/meta_data> for more informations about
 the jobs metadata.
@@ -1915,7 +1950,7 @@ This example shows a possible treatment for possible errors.
     eval { $jq->quit };
     exception( $jq, $@ ) if $@;
 
-=head2 JobQueue data structure
+=head2 JobQueue data structure stored in Redis
 
 The following data structures are stored in Redis server:
 
