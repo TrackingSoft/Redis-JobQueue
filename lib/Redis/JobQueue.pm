@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -1085,7 +1085,7 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 1.00
+This documentation refers to C<Redis::JobQueue> version 1.01
 
 =head1 SYNOPSIS
 
@@ -1193,19 +1193,20 @@ Simple methods for organizing producer, worker, and consumer clients.
 
 =item C<id>
 
-An id that uniquely identifies the job, scalar
+An id that uniquely identifies the job, scalar.
 
 =item C<queue>
 
-Queue name in which job is placed, scalar
+Queue name in which job is placed, scalar.
 
 =item C<expire>
 
-For how long (seconds) job data structures will be kept in memory
+For how long (seconds) job data structures will be kept in memory.
 
 =item C<status>
 
-Job status, scalar. See L<Redis::JobQueue::Job> for the list of pre-defined statuses.
+Job status, scalar. See L<Redis::JobQueue::Job|Redis::JobQueue::Job> L<EXPORT|Redis::JobQueue::Job/EXPORT> section
+for the list of pre-defined statuses.
 Can be also set to any arbitrary value.
 
 =item C<workload>, C<result>
@@ -1326,7 +1327,7 @@ The following example illustrates a C<add_job()> call with all the valid argumen
 If used with the optional argument C<LPUSH =E<gt> 1>, the job is placed at the front of
 the queue and will be returned by the next call to get_next_job.
 
-TTL of job data on Redis server is set in accordance with the C<expire>
+TTL of job data on Redis server is set in accordance with the L</expire>
 attribute of the L<Redis::JobQueue::Job|Redis::JobQueue::Job> object. Make
 sure it's higher than the time needed to process the other jobs in the queue.
 
@@ -1432,7 +1433,7 @@ These examples illustrate a C<get_next_job> call with all the valid arguments:
         );
 
 TTL job data for the job resets on the Redis server in accordance with
-the C<expire> attribute of the job object.
+the L</expire> attribute of the job object.
 
 =head3 C<update_job( $job )>
 
@@ -1444,14 +1445,14 @@ Returns the number of attributes that were updated if the job was on the Redis
 server and C<undef> if it was not.
 When you change a single attribute, returns C<2> because L<updated|Redis::JobQueue::Job/updated> also changes.
 
-Changing the C<expire> attribute is ignored.
+Changing the L</expire> attribute is ignored.
 
 The following examples illustrate uses of the C<update_job> method:
 
     $jq->update_job( $job );
 
 TTL job data for the job resets on the Redis server in accordance with
-the C<expire> attribute of the job object.
+the L</expire> attribute of the job object.
 
 =head3 C<delete_job( $job )>
 
@@ -1702,7 +1703,7 @@ Piece of code wrapped in C<eval {...};> and analyze L</last_errorcode>
 
 =back
 
-In L</last_errortsode> recognizes the following:
+In L</last_errorcode> recognizes the following:
 
 =over 3
 
@@ -2000,7 +2001,7 @@ For example:
     ...
 
 After you create (L</add_job> method) or modify (L</update_job> method)
-the data set are within the time specified C<expire> attribute (seconds).
+the data set are within the time specified L</expire> attribute (seconds).
 For example:
 
     redis 127.0.0.1:6379> TTL JobQueue:478B9C84-C5B8-11E1-A2C5-D35E0A986783

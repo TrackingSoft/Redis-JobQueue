@@ -4,6 +4,11 @@ use 5.010;
 use strict;
 use warnings;
 
+if ( $^O eq 'MSWin32' ) {
+    print STDERR "OS unsupported: $^O\n";
+    exit( 255 );
+}
+
 use File::Basename;
 use ExtUtils::MakeMaker qw( prompt );
 

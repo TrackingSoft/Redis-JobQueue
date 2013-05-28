@@ -5,7 +5,7 @@ use 5.010;
 use strict;
 use warnings;
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -306,7 +306,7 @@ Redis::JobQueue::Job - Object interface for creating and manipulating jobs
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 1.00
+This documentation refers to C<Redis::JobQueue::Job> version 1.01
 
 =head1 SYNOPSIS
 

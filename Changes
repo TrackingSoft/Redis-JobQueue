@@ -1,5 +1,13 @@
 Revision history for Redis::JobQueue package
 
+1.01  Tue May  28 2013
+    CHANGES:
+    - Minor changes in documentation.
+
+    FIXES:
+    - Checking OS in Makefile.PL
+      Tests hang on Windows.
+
 1.00  Mon May  07 2013
 
     !!! This is a major upgrade that changes API. It's strongly advised to study
