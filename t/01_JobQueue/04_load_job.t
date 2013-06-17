@@ -96,12 +96,12 @@ $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 $job = $jq->add_job( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');
 
-is scalar( $job->modified_attributes ), 0, "all fields are modified";
+is scalar( $job->modified_attributes ), 0, "no modified fields";
 
 $new_job = $jq->load_job( $job );
 isa_ok( $new_job, 'Redis::JobQueue::Job');
 
-is scalar( $new_job->modified_attributes ), 1, "no modified fields";
+is scalar( $new_job->modified_attributes ), 0, "no modified fields";
 
 foreach my $field ( keys %{$pre_job} )
 {

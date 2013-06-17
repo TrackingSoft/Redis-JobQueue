@@ -89,6 +89,7 @@ my $pre_job = {
     started     => time,
     updated     => time,
     completed   => time,
+    failed      => time,
     };
 
 $jq = Redis::JobQueue->new(

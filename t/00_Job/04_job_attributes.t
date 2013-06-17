@@ -27,6 +27,7 @@ my @job_fields = qw(
     started
     updated
     completed
+    failed
     );
 
 my $pre_job = {

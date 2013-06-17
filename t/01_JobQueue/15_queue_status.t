@@ -88,7 +88,14 @@ for ( 1..5 )
     note "$_ .. 5";
     $job = $jq->add_job( $pre_job );
     $job->started( time ) if $_ > 1;
-    $job->completed( time ) if $_ > 2;
+    if ( $_ > 3 )
+    {
+        $job->failed( time );
+    }
+    elsif ( $_ > 2 )
+    {
+        $job->completed( time );
+    }
     $jq->update_job( $job );
     sleep 1;
 }

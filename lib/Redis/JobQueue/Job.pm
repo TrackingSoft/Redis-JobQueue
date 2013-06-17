@@ -5,7 +5,7 @@ use 5.010;
 use strict;
 use warnings;
 
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -163,7 +163,7 @@ for my $name ( qw( created updated ) )
         );
 }
 
-for my $name ( qw( started completed ) )
+for my $name ( qw( started completed failed ) )
 {
     has $name           => (
         is          => 'rw',
@@ -214,7 +214,7 @@ sub elapsed {
 
     if ( my $started = $self->started )
     {
-        return( ( $self->completed || time ) - $started );
+        return( ( $self->completed || $self->failed || time ) - $started );
     }
     else
     {
@@ -274,7 +274,7 @@ sub _variability_set {
     my $self    = shift;
     my $field   = shift;
 
-    if ( $field =~ /^(status|meta_data|workload|result|progress|message|started|completed)$/ )
+    if ( $field =~ /^(status|meta_data|workload|result|progress|message|started|completed|failed)$/ )
     {
         $self->updated( time );
         ++$self->_variability->{ 'updated' };
@@ -286,7 +286,7 @@ sub _variability_set {
         if      ( $new_status eq STATUS_CREATED )   { $self->created( time ) }
         elsif   ( $new_status eq STATUS_WORKING )   { $self->started( time ) unless $self->started }
         elsif   ( $new_status eq STATUS_COMPLETED ) { $self->completed( time ) }
-        elsif   ( $new_status eq STATUS_FAILED )    { $self->completed( time ) }
+        elsif   ( $new_status eq STATUS_FAILED )    { $self->failed( time ) }
     }
 
     ++$self->_variability->{ $field };
@@ -306,7 +306,7 @@ Redis::JobQueue::Job - Object interface for creating and manipulating jobs
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 1.01
+This documentation refers to C<Redis::JobQueue::Job> version 1.02
 
 =head1 SYNOPSIS
 
@@ -491,7 +491,7 @@ If necessary, you can set your own value, for example:
 Returns the time (UTC) of the most recent modification of the job.
 
 Set to the current time (C<time>) when value(s) of any of the following data changes:
-L</status>, L</workload>, L</result>, L</progress>, L</message>, L</completed>.
+L</status>, L</workload>, L</result>, L</progress>, L</message>, L</completed>, L</failed>.
 
 Can be updated manually:
 
@@ -503,16 +503,28 @@ Returns the time (UTC) of the task completion.
 
 It is set to 0 when task is created.
 
-Set to C<time> when L</status> is changed to L</STATUS_COMPLETED> or to L</STATUS_FAILED>.
+Set to C<time> when L</status> is changed to L</STATUS_COMPLETED>.
 
 Can be modified manually:
 
     $job->completed( time );
 
+=head3 C<failed>
+
+Returns the time (UTC) of the task failure.
+
+It is set to 0 when task is created.
+
+Set to C<time> when L</status> is changed to L</STATUS_FAILED>.
+
+Can be modified manually:
+
+    $job->failed( time );
+
 =head3 C<elapsed>
 
 Returns the time (in seconds) since the job started processing (see L</started>)
-to the current time.
+till job L</completed> or L</failed> or to the current time.
 Returns C<undef> if the start processing time was set to 0.
 
 =head3 C<meta_data>
@@ -590,7 +602,7 @@ Job has failed. Set by the worker function.
 User himself should specify the status L</ STATUS_WORKING>, L</ STATUS_COMPLETED>, L</ STATUS_FAILED>
 or own status when processing the job.
 
-=head2 DIAGNOSTICS
+=head1 DIAGNOSTICS
 
 An error will cause the program to halt (C<confess>) if an argument
 is not valid. Use C<$@> for the analysis of the specific reasons.

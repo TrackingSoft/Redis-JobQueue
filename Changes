@@ -1,5 +1,13 @@
 Revision history for Redis::JobQueue package
 
+1.02  Mon Jun  17 2013
+    CHANGES:
+    - Added standard job field: Time when job was 'failed' (user settable).
+    - Added a method 'last_error'.
+
+    FIXES:
+    - 'add_job', 'update_job', 'load_job' not cause 'clear_variability' for metadata.
+
 1.01  Tue May  28 2013
     CHANGES:
     - Minor changes in documentation.

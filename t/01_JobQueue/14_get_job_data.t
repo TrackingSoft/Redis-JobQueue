@@ -101,7 +101,7 @@ foreach my $field ( keys %$hash_data )
     {
         ok defined( _NONNEGINT( $hash_data->{ $field } ) ), "data OK: $field";
     }
-    elsif ( $field =~ /^(started|completed|progress)$/ )
+    elsif ( $field =~ /^(started|completed|failed|progress)$/ )
     {
         is $hash_data->{ $field }, 0, "data OK: $field";
     }
@@ -138,7 +138,7 @@ foreach my $field ( @job_fields )
     {
         ok defined( _NONNEGINT( $hash_data->{ $field } ) ), "data OK: $field";
     }
-    elsif ( $field =~ /^(started|completed|progress)$/ )
+    elsif ( $field =~ /^(started|completed|failed|progress)$/ )
     {
         is $hash_data->{ $field }, 0, "data OK: $field";
     }
@@ -176,7 +176,7 @@ foreach my $idx ( 0..$#job_fields )
     {
         ok defined( _NONNEGINT( $arr_data[ $idx ] ) ), "data OK: $field";
     }
-    elsif ( $field =~ /^(started|completed|progress)$/ )
+    elsif ( $field =~ /^(started|completed|failed|progress)$/ )
     {
         is $arr_data[ $idx ], 0, "data OK: $field";
     }
@@ -239,7 +239,8 @@ ok $jq->update_job( $job ),                                     'job updated';
 
 ok( ( $jq->get_job_data( $job, 'started' ) )[0],                'started is set' );
 is( ( $jq->get_job_data( $job, 'completed' ) )[0], 0,           'completed not set' );
-ok defined( ( $jq->get_job_data( $job, 'elapsed' ) )[0] ),   'elapsed is set';
+is( ( $jq->get_job_data( $job, 'failed' ) )[0], 0,              'failed not set' );
+ok defined( ( $jq->get_job_data( $job, 'elapsed' ) )[0] ),      'elapsed is set';
 
 $job->progress( 0.5 );
 $job->message( 'Hello, World!' );
@@ -258,7 +259,16 @@ foreach my $status ( ( STATUS_COMPLETED, STATUS_FAILED ) )
     is( ( $jq->get_job_data( $job->id, 'status' ) )[0], $status,    'status OK' );
 
     is( ( $jq->get_job_data( $job, 'started' ) )[0], 0,         'started not set' );
-    ok( ( $jq->get_job_data( $job, 'completed' ) )[0],          'completed is set' );
+    if ( $status eq STATUS_COMPLETED )
+    {
+        ok( ( $jq->get_job_data( $job, 'completed' ) )[0],      'completed is set' );
+        ok( !( $jq->get_job_data( $job, 'failed' ) )[0],        'failed not set' );
+    }
+    elsif ( $status eq STATUS_FAILED )
+    {
+        ok( !( $jq->get_job_data( $job, 'completed' ) )[0],     'completed not set' );
+        ok( ( $jq->get_job_data( $job, 'failed' ) )[0],         'failed is set' );
+    }
     is( ( $jq->get_job_data( $job, 'elapsed' ) )[0], undef,     'elapsed not set' );
 }
 
@@ -273,7 +283,16 @@ foreach my $status ( ( STATUS_COMPLETED, STATUS_FAILED ) )
     is( ( $jq->get_job_data( $job->id, 'status' ) )[0], $status,    'status OK' );
 
     ok( ( $jq->get_job_data( $job, 'started' ) )[0],            'started is set' );
-    ok( ( $jq->get_job_data( $job, 'completed' ) )[0],          'completed is set' );
+    if ( $status eq STATUS_COMPLETED )
+    {
+        ok( ( $jq->get_job_data( $job, 'completed' ) )[0],      'completed is set' );
+        ok( !( $jq->get_job_data( $job, 'failed' ) )[0],        'failed not set' );
+    }
+    elsif ( $status eq STATUS_FAILED )
+    {
+        ok( !( $jq->get_job_data( $job, 'completed' ) )[0],     'completed not set' );
+        ok( ( $jq->get_job_data( $job, 'failed' ) )[0],         'failed is set' );
+    }
     ok( defined( ( $jq->get_job_data( $job, 'elapsed' ) )[0] ), 'elapsed is set' );
 }
 

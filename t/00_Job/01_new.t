@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 53;
+use Test::More tests => 60;
 use Test::NoWarnings;
 
 BEGIN {
@@ -130,7 +130,7 @@ foreach my $val ( ( \"scalar", [] ) )
         ) } "expecting to die (message = ".( $val // '<undef>' ).")";
 }
 
-foreach my $field ( qw( created updated completed ) )
+foreach my $field ( qw( created updated completed failed ) )
 {
     $tmp_pre_job = { %{$pre_job} };
     foreach my $val ( ( -1, -3, "", "0.5", \"scalar", [], "something" ) )

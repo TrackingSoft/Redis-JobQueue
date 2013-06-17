@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 25;
+use Test::More tests => 26;
 use Test::NoWarnings;
 
 BEGIN { use_ok 'Redis::JobQueue::Job', qw(
@@ -31,6 +31,7 @@ my @job_fields = qw(
     started
     updated
     completed
+    failed
     );
 
 my @job_methods = qw(

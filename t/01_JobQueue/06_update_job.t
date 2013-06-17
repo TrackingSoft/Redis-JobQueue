@@ -100,7 +100,7 @@ foreach my $field ( keys %{$pre_job} )
 
     is scalar( $job->modified_attributes ), 0, "no modified fields";
     $job->$field( $job->$field );
-    is scalar( $job->modified_attributes ), 1 + ( $field =~ /^status|^meta_data|^workload|^result|^progress|^message|^completed/ ? 1 : 0 ), "is modified field"; # because also changes 'updated'
+    is scalar( $job->modified_attributes ), 1 + ( $field =~ /^status|^meta_data|^workload|^result|^progress|^message|^completed|^failed/ ? 1 : 0 ), "is modified field"; # because also changes 'updated'
 
     if ( $field eq 'id' )
     {

@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 57;
+use Test::More tests => 65;
 use Test::NoWarnings;
 
 use Redis::JobQueue::Job qw(
@@ -30,6 +30,7 @@ my $pre_job = {
     started     => time,
     updated     => time,
     completed   => time,
+    failed      => time,
     };
 
 my $job = Redis::JobQueue::Job->new( $pre_job );
@@ -60,7 +61,7 @@ foreach my $field ( $job->job_attributes )
         $job->$field( \( scalar reverse ${$job->$field} ) );
         is ${$job->$field}, ${$pre_job->{ $field }}, "accessor return a valid value (".${$job->$field}.")";
     }
-    elsif ( $field =~ /^expire|^created|^started|^updated|^completed/ )
+    elsif ( $field =~ /^expire|^created|^started|^updated|^completed|^failed/ )
     {
         $job->$field( $job->$field + 1 );
 #        is $job->$field - 1, $pre_job->{ $field }, "accessor return a valid value (".$job->$field.")";
@@ -96,12 +97,14 @@ ok $job->created,                   'created is set';
 ok $job->updated,                   'updated is set';
 is $job->started, 0,                'started not set';
 is $job->completed, 0,              'completed not set';
+is $job->failed, 0,                 'failed not set';
 is $job->elapsed, undef,            'elapsed not set';
 
 $job->status( STATUS_WORKING );
 my $started = $job->started;
 ok $started,                        'started is set';
 is $job->completed, 0,              'completed not set';
+is $job->failed, 0,                 'failed not set';
 ok defined( $job->elapsed ),        'elapsed is set';
 
 sleep 1;
@@ -115,7 +118,16 @@ foreach my $status ( ( STATUS_COMPLETED, STATUS_FAILED ) )
 
     $job->status( $status );
     is $job->started, 0,            'started not set';
-    ok $job->completed,             'completed is set';
+    if ( $status eq STATUS_COMPLETED )
+    {
+        ok $job->completed,             'completed is set';
+        ok !$job->failed,               'failed not set';
+    }
+    elsif ( $status eq STATUS_FAILED )
+    {
+        ok !$job->completed,            'completed not set';
+        ok $job->failed,                'failed is set';
+    }
     is $job->elapsed, undef,        'elapsed not set';
 }
 
@@ -127,6 +139,15 @@ foreach my $status ( ( STATUS_COMPLETED, STATUS_FAILED ) )
     $job->status( STATUS_WORKING );
     $job->status( $status );
     ok $job->started,               'started is set';
-    ok $job->completed,             'completed is set';
+    if ( $status eq STATUS_COMPLETED )
+    {
+        ok $job->completed,             'completed is set';
+        ok !$job->failed,               'failed not set';
+    }
+    elsif ( $status eq STATUS_FAILED )
+    {
+        ok !$job->completed,            'completed not set';
+        ok $job->failed,                'failed is set';
+    }
     ok defined( $job->elapsed ),    'elapsed is set';
 }

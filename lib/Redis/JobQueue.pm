@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use bytes;
 
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -377,17 +377,16 @@ sub BUILD {
     my ( undef, $max_datasize ) = $self->_call_redis( 'CONFIG', 'GET', 'maxmemory' );
     unless ( defined( _NONNEGINT( $max_datasize ) ) )
     {
-        $self->_set_last_errorcode( E_NETWORK );
-        die $ERROR[ E_NETWORK ];
+        die $self->_error( E_NETWORK );
     }
-    defined( _NONNEGINT( $max_datasize ) ) or die $ERROR[ E_NETWORK ];
+    defined( _NONNEGINT( $max_datasize ) ) or die $self->_error( E_NETWORK );
     $self->max_datasize( min $max_datasize, $self->max_datasize )
         if $max_datasize;
 
     my ( $major, $minor ) = $self->_redis->info->{redis_version} =~ /^(\d+)\.(\d+)/;
     if ( $major < 2 or $major == 2 && $minor <= 4 )
     {
-        $self->_set_last_errorcode( E_REDIS );
+        $self->_error( E_REDIS );
         confess "Needs Redis server version 2.6 or higher";
     }
 
@@ -454,10 +453,10 @@ has '_lua_scripts'          => (
 sub add_job {
     my $self        = shift;
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
     ref( $_[0] ) eq 'HASH'
         or _INSTANCE( $_[0], 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
+        or confess _error( E_MISMATCH_ARG )
         ;
     my $job = _INSTANCE( $_[0], 'Redis::JobQueue::Job' ) ? shift : Redis::JobQueue::Job->new( shift );
 
@@ -491,7 +490,7 @@ sub add_job {
 # transaction end
     $self->_call_redis( 'EXEC' ) // return;
 
-    $job->clear_variability( $job->job_attributes );
+    $job->clear_variability;
     return $job;
 }
 
@@ -521,7 +520,7 @@ sub get_job_data {
     {
         if ( exists $right_names{elapsed} )
         {
-            foreach my $field ( qw( started completed ) )
+            foreach my $field ( qw( started completed failed ) )
             {
                 push @additional, $field if !exists $right_names{ $field };
             }
@@ -534,7 +533,7 @@ sub get_job_data {
     my @all_fields = ( @right_keys, @additional );
     my $total_fields = scalar( @all_fields );
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
 
     my $tm = time;
     my ( $job_exists, @data ) = $self->_call_redis(
@@ -565,7 +564,11 @@ sub get_job_data {
 
         if ( my $started = $result_data{started} )
         {
-            $result_data{elapsed} = ( $result_data{completed} || time ) - $started;
+            $result_data{elapsed} = (
+                $result_data{completed} ||
+                $result_data{failed}    ||
+                time
+                ) - $started;
         }
         else
         {
@@ -582,7 +585,11 @@ sub get_job_data {
             {
                 if ( my $started = $data[ firstidx { $_ eq 'started' } @all_fields ] )
                 {
-                    $data[ $i ] = ( $data[ firstidx { $_ eq 'completed' } @all_fields ] || $tm ) - $started;
+                    $data[ $i ] = (
+                        $data[ firstidx { $_ eq 'completed' } @all_fields ] ||
+                        $data[ firstidx { $_ eq 'failed' } @all_fields ]    ||
+                        $tm
+                        ) - $started;
                 }
                 else
                 {
@@ -610,7 +617,7 @@ sub load_job {
 
     my $job_id = $self->_get_job_id( $id_source );
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
 
     my ( $job_exists, @job_data ) = $self->_call_redis(
         $self->_lua_script_cmd( 'load_job' ),
@@ -639,7 +646,7 @@ sub load_job {
     }
 
     my $new_job = Redis::JobQueue::Job->new( $pre_job );
-    $new_job->clear_variability( @job_fields );
+    $new_job->clear_variability;
 
     return $new_job;
 }
@@ -648,7 +655,7 @@ sub get_next_job {
     my $self        = shift;
 
     !( scalar( @_ ) % 2 )
-        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
+        or confess $self->_error( E_MISMATCH_ARG )
         ;
     my %args = ( @_ );
     my $queues      = $args{queue};
@@ -660,7 +667,7 @@ sub get_next_job {
     foreach my $arg ( ( @{$queues} ) )
     {
         defined _STRING( $arg )
-            or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
+            or confess $self->_error( E_MISMATCH_ARG )
             ;
     }
 
@@ -731,8 +738,7 @@ sub _get_next_job {
             or time < $expire_time
             )
         {
-            $self->_set_last_errorcode( E_JOB_DELETED );
-            confess $id.' '.$ERROR[ E_JOB_DELETED ];
+            confess $id.' '.$self->_error( E_JOB_DELETED );
         }
 # If the queue contains a job identifier that has already been removed due
 # to expiration of the 'expire' time, the cycle will ensure the transition
@@ -746,7 +752,7 @@ sub update_job {
     my $job         = shift;
 
     _INSTANCE( $job, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
+        or confess $self->_error( E_MISMATCH_ARG )
         ;
 
     my $id = $job->id;
@@ -787,7 +793,7 @@ sub update_job {
     }
 # transaction end
     $self->_call_redis( 'EXEC' ) // return;
-    $job->clear_variability( @job_fields );
+    $job->clear_variability;
 
     return $updated;
 }
@@ -798,10 +804,10 @@ sub delete_job {
 
     defined( _STRING( $id_source ) )
         or _INSTANCE( $id_source, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
+        or confess $self->_error( E_MISMATCH_ARG )
         ;
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
 
     return $self->_call_redis(
         $self->_lua_script_cmd( 'delete_job' ),
@@ -813,7 +819,7 @@ sub delete_job {
 sub get_job_ids {
     my $self        = shift;
 
-    $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ].' (Odd number of elements in hash assignment)'
+    confess $self->_error( E_MISMATCH_ARG ).' (Odd number of elements in hash assignment)'
         if ( scalar( @_ ) % 2 );
 
     my %args = @_;
@@ -827,7 +833,7 @@ sub get_job_ids {
     my @queues      = grep { _STRING( $_ ) } @{ $args{queue} };
     my @statuses    = grep { _STRING( $_ ) } @{ $args{status} };
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
 
     my @ids = $self->_call_redis(
         $self->_lua_script_cmd( 'get_job_ids' ),
@@ -850,7 +856,7 @@ sub server {
 sub ping {
     my $self        = shift;
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
 
     my $ret = eval { $self->_redis->ping };
     $self->_redis_exception( $@ )
@@ -861,7 +867,7 @@ sub ping {
 sub quit {
     my $self        = shift;
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
     eval { $self->_redis->quit };
     $self->_redis_exception( $@ )
         if $@;
@@ -874,12 +880,12 @@ sub queue_status {
 
     defined( _STRING( $maybe_queue ) )
         or _INSTANCE( $maybe_queue, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
+        or confess $self->_error( E_MISMATCH_ARG )
         ;
 
     $maybe_queue = $maybe_queue->queue if ref $maybe_queue;
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
 
     my %qstatus = $self->_call_redis(
         $self->_lua_script_cmd( 'queue_status' ),
@@ -889,6 +895,12 @@ sub queue_status {
         );
 
     return \%qstatus;
+}
+
+sub last_error {
+    my $self        = shift;
+
+    return $ERROR[ $self->last_errorcode ];
 }
 
 #-- private methods ------------------------------------------------------------
@@ -907,18 +919,18 @@ sub _redis_exception {
         or $error =~ /^Redis server closed connection/
         )
     {
-        $self->_set_last_errorcode( E_NETWORK );
+        $self->_error( E_NETWORK );
     }
     elsif (
            $error =~ /[\S+] ERR command not allowed when used memory > 'maxmemory'/
         or $error =~ /[\S+] OOM command not allowed when used memory > 'maxmemory'/
         )
     {
-        $self->_set_last_errorcode( E_MAX_MEMORY_LIMIT );
+        $self->_error( E_MAX_MEMORY_LIMIT );
     }
     else
     {
-        $self->_set_last_errorcode( E_REDIS );
+        $self->_error( E_REDIS );
     }
 
     if ( $self->_transaction )
@@ -932,7 +944,7 @@ sub _redis_exception {
 sub _redis_constructor {
     my $self    = shift;
 
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
     my $redis;
     eval { $redis = Redis->new(
         server      => $self->_server,
@@ -953,7 +965,7 @@ sub _call_redis {
 
     my $method = shift;
     my @result;
-    $self->_set_last_errorcode( E_NO_ERROR );
+    $self->_error( E_NO_ERROR );
 
     # name of the key hash metadata ends at ':'.NS_METADATA_SUFFIX
     my $suffix = NS_METADATA_SUFFIX;
@@ -973,9 +985,8 @@ sub _call_redis {
                 eval { $self->_redis->discard };
                 $self->_transaction( 0 );
             }
-            $self->_set_last_errorcode( E_DATA_TOO_LARGE );
-# 'die' as maybe too long to analyze the data output from the 'confess'
-            die $ERROR[ E_DATA_TOO_LARGE ].': '.$_[1];
+            # 'die' as maybe too long to analyze the data output from the 'confess'
+            die $self->_error( E_DATA_TOO_LARGE ).': '.$_[1];
         }
 
         @result = eval {
@@ -989,7 +1000,7 @@ sub _call_redis {
     elsif ( $method eq 'HSET' and !$self->_redis->{encoding} and utf8::is_utf8( $_[2] ) )
     {
         # For non-serialized fields: UTF8 can not be transferred to the Redis server in mode of 'encoding => undef'
-        $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ]." (utf8 in $_[1])";
+        confess $self->_error( E_MISMATCH_ARG )." (utf8 in $_[1])";
     }
     else
     {
@@ -1049,7 +1060,7 @@ sub _get_job_id {
 
     defined( _STRING( $id_source ) )
         or _INSTANCE( $id_source, 'Redis::JobQueue::Job' )
-        or ( $self->_set_last_errorcode( E_MISMATCH_ARG ), confess $ERROR[ E_MISMATCH_ARG ] )
+        or confess $self->_error( E_MISMATCH_ARG )
         ;
 
     return ref( $id_source ) ? $id_source->id : $id_source;
@@ -1071,6 +1082,14 @@ sub _lua_script_cmd {
     return( 'EVALSHA', $sha1 );
 }
 
+sub _error {
+    my $self        = shift;
+    my $error_code  = shift;
+
+    $self->_set_last_errorcode( $error_code );
+    return $self->last_error;
+}
+
 #-- Closes and cleans up -------------------------------------------------------
 
 no Mouse::Util::TypeConstraints;
@@ -1085,7 +1104,7 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 1.01
+This documentation refers to C<Redis::JobQueue> version 1.02
 
 =head1 SYNOPSIS
 
@@ -1627,6 +1646,13 @@ C<maxmemory> limit from a C<redis.conf> file.
 =head3 C<last_errorcode>
 
 The method of access to the code of the last identified error.
+
+To see more description of the identified errors look at the L</DIAGNOSTICS>
+section.
+
+=head3 C<last_error>
+
+The method of access to the error message of the last identified error.
 
 To see more description of the identified errors look at the L</DIAGNOSTICS>
 section.

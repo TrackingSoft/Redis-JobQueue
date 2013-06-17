@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 31;
+use Test::More tests => 33;
 use Test::NoWarnings;
 
 use Redis::JobQueue::Job;
@@ -27,6 +27,7 @@ my @job_fields = qw(
     started
     updated
     completed
+    failed
     );
 
 my $pre_job = {
@@ -64,7 +65,7 @@ foreach my $field ( @job_fields )
     {
         $job->$field( scalar reverse ${$job->$field} );
     }
-    elsif ( $field =~ /^expire|^created|^started|^updated|^completed/ )
+    elsif ( $field =~ /^expire|^created|^started|^updated|^completed|^failed/ )
     {
         $job->$field( ( $job->$field // 0 ) + 1 );
     }
@@ -87,7 +88,7 @@ foreach my $field ( @job_fields )
 
     my @modified = $job->modified_attributes;
     my $modified = scalar @modified;
-    is $modified, 1 + ( $field =~ /^status|^meta_data|^workload|^result|^progress|^message|^started|^completed/ ? 1 : 0 ), "modified fields ($field): @modified";
+    is $modified, 1 + ( $field =~ /^status|^meta_data|^workload|^result|^progress|^message|^started|^completed|^failed/ ? 1 : 0 ), "modified fields ($field): @modified";
 }
 
 $job->clear_variability( @job_fields );
