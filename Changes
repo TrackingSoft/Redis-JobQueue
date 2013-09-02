@@ -1,5 +1,22 @@
 Revision history for Redis::JobQueue package
 
+1.04  Thu Sep  05 2013
+    CHANGES:
+    - Method 'clear_variability' renamed to 'clear_modified'.
+    - Redis server updates only updated data, if you change the metadata,
+      not all of the metadata.
+    - Change the 'completed' attribute sets 'failed' to 0,
+      the change 'failed' sets 'completed' to 0.
+      The attributes 'completed' and 'failed' are mutually exclusive.
+    - Method 'update_job' accesses the Redis server only if there is data to update.
+    FIXES:
+    - $@ is localized before we attempt to catch an exception.
+
+1.03  Tue Jun  25 2013
+    FIXES:
+    - Added description of the Redis::JobQueue::Job attributes:
+      'progress', 'message'.
+
 1.02  Mon Jun  17 2013
     CHANGES:
     - Added standard job field: Time when job was 'failed' (user settable).

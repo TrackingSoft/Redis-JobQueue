@@ -37,7 +37,7 @@ my @job_fields = qw(
 my @job_methods = qw(
     new
     modified_attributes
-    clear_variability
+    clear_modified
     job_attributes
     elapsed
     );

@@ -10,7 +10,7 @@ t/00_compile.t
 t/00_Job/00_compile.t
 t/00_Job/01_new.t
 t/00_Job/02_accessor.t
-t/00_Job/03_variability.t
+t/00_Job/03_modified.t
 t/00_Job/04_job_attributes.t
 t/00_Job/05_meta_data.t
 t/01_JobQueue/00_compile.t

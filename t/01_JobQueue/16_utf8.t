@@ -109,9 +109,9 @@ is $redis->{encoding}, 'utf8', "encoding = 'utf8'";
 #   - setting of 'use utf8;' or 'use bytes;'
 #   - the place in which data is generated
 
-my $file_euro   = "\x{20ac}";
-#my $file_bin    = pack "H8", "5065726c";
-my $file_bin    = "\x61\xE2\x98\xBA\x62";
+my $file_euro       = "\x{20ac}";
+#my $file_bin        = pack "H8", "5065726c";
+my $file_bin        = "\x61\xE2\x98\xBA\x62";
 
 {
     # utf8 - Perl pragma to enable/disable UTF-8 (or UTF-EBCDIC) in source code
@@ -471,8 +471,8 @@ my $file_bin    = "\x61\xE2\x98\xBA\x62";
             is_deeply $new_status, $data, 'correct loaded status';
 
             my $new_job = $jq->load_job( $added_job );
-            $new_status = $redis->{encoding} ? $new_status : Encode::decode_utf8( $new_status );
-            is_deeply $new_status, $data, 'correct loaded status';
+            $new_status = $new_job->status;
+            is_deeply( ( utf8::is_utf8( $new_status ) ? $new_status : Encode::decode_utf8( $new_job->status ) ), $data, 'correct loaded status' );
         }
     }
 }

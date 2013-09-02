@@ -167,6 +167,7 @@ foreach my $field ( qw( workload result ) )
         is $jq->update_job( $job ), 2, 'job updated';   # because also changes 'updated'
         my $retrieved_job = $jq->load_job( $job );
         is_deeply $retrieved_job->$field, $job->$field, "$field is correct";
+        is $jq->update_job( $retrieved_job ), 0, 'job not updated';
     }
 }
 

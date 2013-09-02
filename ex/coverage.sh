@@ -18,7 +18,7 @@ perl -MDevel::Cover xt/release/99_pod_coverage.t
 perl -MDevel::Cover t/00_Job/00_compile.t
 perl -MDevel::Cover t/00_Job/01_new.t
 perl -MDevel::Cover t/00_Job/02_accessor.t
-perl -MDevel::Cover t/00_Job/03_variability.t
+perl -MDevel::Cover t/00_Job/03_modified.t
 perl -MDevel::Cover t/00_Job/04_job_attributes.t
 perl -MDevel::Cover t/00_Job/05_meta_data.t
 perl -MDevel::Cover xt/release/00_Job/98_pod.t

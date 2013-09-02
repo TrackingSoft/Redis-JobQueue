@@ -1,11 +1,23 @@
 package Redis::JobQueue::Job;
-use 5.010;
 
 # Pragmas
+use 5.010;
 use strict;
 use warnings;
 
-our $VERSION = '1.02';
+# ENVIRONMENT ------------------------------------------------------------------
+
+=head1 NAME
+
+Redis::JobQueue::Job - Object interface for creating and manipulating jobs
+
+=head1 VERSION
+
+This documentation refers to C<Redis::JobQueue::Job> version 1.04
+
+=cut
+
+our $VERSION = '1.04';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -13,7 +25,7 @@ our @EXPORT_OK  = qw(
     STATUS_WORKING
     STATUS_COMPLETED
     STATUS_FAILED
-    );
+);
 
 #-- load the modules -----------------------------------------------------------
 
@@ -21,12 +33,12 @@ our @EXPORT_OK  = qw(
 use Carp;
 use List::Util qw(
     min
-    );
+);
 use Mouse;                                      # automatically turns on strict and warnings
 use Mouse::Util::TypeConstraints;
 use Params::Util qw(
     _HASH0
-    );
+);
 
 #-- declarations ---------------------------------------------------------------
 
@@ -35,35 +47,36 @@ use constant {
     STATUS_WORKING      => '__working__',
     STATUS_COMPLETED    => '__completed__',
     STATUS_FAILED       => '__failed__',
-    };
+};
 
 my $meta = __PACKAGE__->meta;
 
 subtype __PACKAGE__.'::NonNegInt',
     as 'Int',
     where { $_ >= 0 },
-    message { ( $_ || '' ).' is not a non-negative integer!' }
-    ;
+    message { ( $_ || '' ).' is not a non-negative integer!' },
+;
 
 subtype __PACKAGE__.'::Progress',
     as 'Num',
     where { $_ >= 0 and $_ <= 1 },
-    message { ( $_ || '' ).' is not a progress number!' }
-    ;
+    message { ( $_ || '' ).' is not a progress number!' },
+;
 
 subtype __PACKAGE__.'::WOSpStr',
     as 'Str',
     where { $_ !~ / / },
-    message { ( $_ || '' ).' contains spaces!' }
-    ;
+    message { ( $_ || '' ).' contains spaces!' },
+;
 
 subtype __PACKAGE__.'::DataRef',
-    as 'ScalarRef';
+    as 'ScalarRef'
+;
 
 coerce __PACKAGE__.'::DataRef',
     from 'Str',
-    via { \$_ }
-    ;
+    via { \$_ },
+;
 
 #-- constructor ----------------------------------------------------------------
 
@@ -71,13 +84,11 @@ around BUILDARGS => sub {
     my $orig  = shift;
     my $class = shift;
 
-    if ( eval { $_[0]->isa( __PACKAGE__ ) } )
-    {
+    if ( eval { $_[0]->isa( __PACKAGE__ ) } ) {
         my $job = shift;
         return $class->$orig( ( map { ( $_, $job->$_ ) } $job->job_attributes ), @_ );
     }
-    else
-    {
+    else {
         return $class->$orig( @_ );
     }
 };
@@ -88,54 +99,52 @@ has 'id'            => (
     is          => 'rw',
     isa         => __PACKAGE__.'::WOSpStr',
     default     => '',
-    trigger     => sub { $_[0]->_variability_set( 'id' ) },
-    );
+    trigger     => sub { $_[0]->_modified_set( 'id' ) },
+);
 
 has 'queue'         => (
     is          => 'rw',
     isa         => 'Maybe[Str]',
     required    => 1,
-    trigger     => sub { $_[0]->_variability_set( 'queue' ) },
-    );
+    trigger     => sub { $_[0]->_modified_set( 'queue' ) },
+);
 
 has 'job'           => (
     is          => 'rw',
     isa         => 'Maybe[Str]',
     default     => '',
-    trigger     => sub { $_[0]->_variability_set( 'job' ) },
-    );
+    trigger     => sub { $_[0]->_modified_set( 'job' ) },
+);
 
 has 'status'        => (
     is          => 'rw',
     isa         => 'Str',
     default     => STATUS_CREATED,
-    trigger     => sub { $_[0]->_variability_set( 'status', $_[1] ) },
-    );
+    trigger     => sub { $_[0]->_modified_set( 'status', $_[1] ) },
+);
 
 has '_meta_data'     => (
     is          => 'rw',
     isa         => 'HashRef',
     init_arg    => 'meta_data',
     default     => sub { {} },
-    trigger     => sub { $_[0]->_variability_set( 'meta_data' ) },
-    );
+);
 
 has 'expire'        => (
     is          => 'rw',
     isa         => 'Maybe['.__PACKAGE__.'::NonNegInt]',
     required    => 1,
-    trigger     => sub { $_[0]->_variability_set( 'expire' ) },
-    );
+    trigger     => sub { $_[0]->_modified_set( 'expire' ) },
+);
 
-for my $name ( qw( workload result ) )
-{
+for my $name ( qw( workload result ) ) {
     has $name           => (
         is          => 'rw',
         # A reference because attribute can contain a large amount of data
         isa         => __PACKAGE__.'::DataRef | HashRef | ArrayRef | ScalarRef | Object',
         coerce      => 1,
         builder     => '_build_data',           # will throw an error if you pass a bare non-subroutine reference as the default
-        trigger     => sub { $_[0]->_variability_set( $name ) },
+        trigger     => sub { $_[0]->_modified_set( $name ) },
     );
 }
 
@@ -143,101 +152,115 @@ has 'progress'      => (
     is          => 'rw',
     isa         => __PACKAGE__.'::Progress',
     default     => 0,
-    trigger     => sub { $_[0]->_variability_set( 'progress' ) },
-    );
+    trigger     => sub { $_[0]->_modified_set( 'progress' ) },
+);
 
 has 'message'       => (
     is          => 'rw',
     isa         => 'Maybe[Str]',
     default     => '',
-    trigger     => sub { $_[0]->_variability_set( 'message' ) },
-    );
+    trigger     => sub { $_[0]->_modified_set( 'message' ) },
+);
 
-for my $name ( qw( created updated ) )
-{
+for my $name ( qw( created updated ) ) {
     has $name           => (
         is          => 'rw',
         isa         => __PACKAGE__.'::NonNegInt',
         default     => sub { time },
-        trigger     => sub { $_[0]->_variability_set( $name ) },
-        );
+        trigger     => sub { $_[0]->_modified_set( $name ) },
+    );
 }
 
-for my $name ( qw( started completed failed ) )
-{
+for my $name ( qw( started completed failed ) ) {
     has $name           => (
         is          => 'rw',
         isa         => __PACKAGE__.'::NonNegInt',
         default     => 0,
-        trigger     => sub { $_[0]->_variability_set( $name ) },
-        );
+        trigger     => sub { $_[0]->_modified_set( $name ) },
+    );
 }
 
 #-- private attributes ---------------------------------------------------------
 
-has '_variability'   => (
+has '_modified'   => (
     is          => 'ro',
     isa         => 'HashRef[Int]',
     lazy        => 1,
     init_arg    => undef,                       # we make it impossible to set this attribute when creating a new object
-    builder     => '_build_variability',
-    );
+    builder     => '_build_modified',
+);
+
+has '_modified_meta_data'   => (
+    is          => 'rw',
+    isa         => 'HashRef[Int]',
+    lazy        => 1,
+    init_arg    => undef,                       # we make it impossible to set this attribute when creating a new object
+    default     => sub { return {}; },
+);
 
 #-- public methods -------------------------------------------------------------
 
-sub clear_variability {
-    my $self    = shift;
+sub clear_modified {
+    my ( $self, @fields ) = @_;
 
-    my @fields = @_;
-    @fields = $self->job_attributes unless @fields;
-    foreach my $field ( @fields )
-    {
-        $self->_variability->{ $field } = 0
-            if exists $self->_variability->{ $field };
+    unless ( @fields ) {
+        $self->clear_modified( $self->job_attributes );
+        my @keys = keys %{ $self->_modified_meta_data };
+        $self->clear_modified( @keys )
+            if @keys;
+        return;
+    }
+
+    foreach my $field ( @fields ) {
+        if    ( exists $self->_modified->{ $field } ) { $self->_modified->{ $field } = 0 }
+        elsif ( exists $self->_modified_meta_data->{ $field } ) { $self->_modified_meta_data->{ $field } = 0 }
     }
 }
 
 sub modified_attributes {
-    my $self        = shift;
+    my ( $self ) = @_;
 
-    return grep { $self->_variability->{ $_ } } $self->job_attributes;
+    my @all_modified = (
+        grep( { $self->_modified->{ $_ } } $self->job_attributes ),
+        grep( { $self->_modified_meta_data->{ $_ } } keys( %{ $self->_modified_meta_data } ) ),
+    );
+
+    return @all_modified;
 }
 
-my %_attributes = map { ( $_->name eq '_meta_data' ? 'meta_data' : $_->name ) => 1 } grep { $_->name ne '_variability' } $meta->get_all_attributes;
+my %_attributes = map { ( $_->name eq '_meta_data' ? 'meta_data' : $_->name ) => 1 } grep { $_->name !~ /^_modified/ } $meta->get_all_attributes;
 
 sub job_attributes {
     return( sort keys %_attributes );
 }
 
 sub elapsed {
-    my $self        = shift;
+    my ( $self ) = @_;
 
-    if ( my $started = $self->started )
-    {
+    if ( my $started = $self->started ) {
         return( ( $self->completed || $self->failed || time ) - $started );
     }
-    else
-    {
+    else {
         return( undef );
     }
 }
 
 sub meta_data {
-    my $self    = shift;
-    my $key     = shift;
-    my $val     = shift;
+    my ( $self, $key, $val ) = @_;
 
     return $self->_meta_data if !defined $key;
 
     # metadata can be set with an external hash
-    if ( _HASH0( $key ) )
-    {
-        foreach my $field ( keys %$key )
-        {
+    if ( _HASH0( $key ) ) {
+        foreach my $field ( keys %$key ) {
             confess 'The name of the metadata field the same as standart job field name'
                 if exists $_attributes{ $field };
         }
         $self->_meta_data( $key );
+        $self->_modified_meta_data( {} );
+        $self->_modified_meta_data->{ $_ } = 1
+            foreach keys %$key;
+        return;
     }
 
     # getter
@@ -247,11 +270,11 @@ sub meta_data {
     confess 'The name of the metadata field the same as standart job field name'
         if exists $_attributes{ $key };
     $self->_meta_data->{ $key } = $val;
+    ++$self->_modified_meta_data->{ $key };
 
     # job data change
     $self->updated( time );
-    ++$self->_variability->{ 'updated' };
-    ++$self->_variability->{ 'meta_data' };
+    ++$self->_modified->{ 'updated' };
 
     return;
 }
@@ -262,26 +285,24 @@ sub _build_data {
     return \'';
 }
 
-sub _build_variability {
-    my $self    = shift;
+sub _build_modified {
+    my ( $self ) = @_;
 
-    my %variability = ();
-    map { $variability{ $_ } = 1 } $self->job_attributes;
-    return \%variability;
+    my %modified;
+    map { $modified{ $_ } = 1 } $self->job_attributes;
+    return \%modified;
 }
 
-sub _variability_set {
+sub _modified_set {
     my $self    = shift;
     my $field   = shift;
 
-    if ( $field =~ /^(status|meta_data|workload|result|progress|message|started|completed|failed)$/ )
-    {
+    if ( $field =~ /^(status|meta_data|workload|result|progress|message|started|completed|failed)$/ ) {
         $self->updated( time );
-        ++$self->_variability->{ 'updated' };
+        ++$self->_modified->{ 'updated' };
     }
 
-    if ( $field eq 'status' )
-    {
+    if ( $field eq 'status' ) {
         my $new_status = shift;
         if      ( $new_status eq STATUS_CREATED )   { $self->created( time ) }
         elsif   ( $new_status eq STATUS_WORKING )   { $self->started( time ) unless $self->started }
@@ -289,7 +310,7 @@ sub _variability_set {
         elsif   ( $new_status eq STATUS_FAILED )    { $self->failed( time ) }
     }
 
-    ++$self->_variability->{ $field };
+    ++$self->_modified->{ $field };
 }
 
 #-- Closes and cleans up -------------------------------------------------------
@@ -299,14 +320,6 @@ no Mouse;                                       # keywords are removed from the 
 __PACKAGE__->meta->make_immutable();
 
 __END__
-
-=head1 NAME
-
-Redis::JobQueue::Job - Object interface for creating and manipulating jobs
-
-=head1 VERSION
-
-This documentation refers to C<Redis::JobQueue::Job> version 1.02
 
 =head1 SYNOPSIS
 
@@ -321,7 +334,7 @@ object:
         status       => STATUS_CREATED,
         workload     => \'Some stuff up to 512MB long',
         result       => \'JOB result comes here, up to 512MB long',
-        };
+    };
 
     my $job = Redis::JobQueue::Job->new(
         id           => $pre_job->{id},
@@ -331,7 +344,7 @@ object:
         status       => $pre_job->{status},
         workload     => $pre_job->{workload},
         result       => $pre_job->{result},
-        );
+    );
 
     $job = Redis::JobQueue::Job->new( $pre_job );
 
@@ -354,7 +367,7 @@ Returns a list of names of the modified object fields:
 
 Resets the sign of changing an attribute. For example:
 
-    $job->clear_variability( qw( status ) );
+    $job->clear_modified( qw( status ) );
 
 =head1 DESCRIPTION
 
@@ -418,7 +431,7 @@ This example illustrates a C<new()> call with all the valid arguments:
                 # The result of the function of the worker
                 # (the function name specified in the 'job').
                 # Do not use it because value should be set by the worker.
-        );
+    );
 
 Returns the object itself, we can chain settings.
 
@@ -468,6 +481,15 @@ A write method can receive both data or a reference to the data.
 
 =back
 
+=head3 C<progress>
+
+Optional attribute, the progress of the task,
+contains a user-defined value from 0 to 1.
+
+=head3 C<message>
+
+Optional attribute, a string message with additional user-defined information.
+
 =head3 C<created>
 
 Returns time (UTC) of job creation.
@@ -509,6 +531,9 @@ Can be modified manually:
 
     $job->completed( time );
 
+Change the C<completed> attribute sets C<failed> = 0.
+The attributes C<completed> and C<failed> are mutually exclusive.
+
 =head3 C<failed>
 
 Returns the time (UTC) of the task failure.
@@ -520,6 +545,9 @@ Set to C<time> when L</status> is changed to L</STATUS_FAILED>.
 Can be modified manually:
 
     $job->failed( time );
+
+Change the C<failed> attribute sets C<completed> = 0.
+The attributes C<failed> and C<completed> are mutually exclusive.
 
 =head3 C<elapsed>
 
@@ -547,17 +575,19 @@ Group metadata can be specified by reference to a hash.
 Metadata may contain scalars, references to arrays and hashes, objects.
 For example:
 
-    $job->meta_data( {
-        'foo'   => 12,
-        'bar'   => [ 13, 14, 15 ],
-        'other' => { a => 'b', c => 'd' },
-        } );
+    $job->meta_data(
+        {
+            'foo'   => 12,
+            'bar'   => [ 13, 14, 15 ],
+            'other' => { a => 'b', c => 'd' },
+        }
+    );
 
 The name of the metadata fields should not match the standard names returned by
 L</job_attributes>.
 An invalid name causes die (C<confess>).
 
-=head3 C<clear_variability( @fields )>
+=head3 C<clear_modified( @fields )>
 
 Resets the sign of any specified attributes that have been changed.
 If no attribute names are specified, the signs are reset for all attributes.
@@ -633,6 +663,8 @@ Sergey Gladkov, E<lt>sgladkov@trackingsoft.comE<gt>
 Alexander Solovey
 
 Jeremy Jordan
+
+Sergiy Zuban
 
 Vlad Marchenko
 

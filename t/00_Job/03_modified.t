@@ -51,7 +51,7 @@ is "@modified", "@all_fields", "all fields are modified";
 my $fields = scalar @job_fields;
 foreach my $field ( @job_fields )
 {
-    $job->clear_variability( $field );
+    $job->clear_modified( $field );
     my @modified = $job->modified_attributes;
     my $modified = scalar @modified;
     is $modified, --$fields, "modified fields: @modified";
@@ -60,7 +60,7 @@ foreach my $field ( @job_fields )
 $fields = 0;
 foreach my $field ( @job_fields )
 {
-    $job->clear_variability;
+    $job->clear_modified;
     if ( $field =~ /^workload|^result/ )
     {
         $job->$field( scalar reverse ${$job->$field} );
@@ -91,6 +91,6 @@ foreach my $field ( @job_fields )
     is $modified, 1 + ( $field =~ /^status|^meta_data|^workload|^result|^progress|^message|^started|^completed|^failed/ ? 1 : 0 ), "modified fields ($field): @modified";
 }
 
-$job->clear_variability( @job_fields );
+$job->clear_modified( @job_fields );
 @modified = $job->modified_attributes;
 is scalar @modified, 0, "no modified fields";

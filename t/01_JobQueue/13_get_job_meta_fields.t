@@ -116,12 +116,12 @@ isa_ok( $new_job, 'Redis::JobQueue::Job');
 is_deeply $new_job->meta_data, $added_job->meta_data, 'correct loaded hash';
 
 # update_job
-$added_job->clear_variability;
+$added_job->clear_modified;
 $added_job->meta_data( 'foo', \16 );
 is $jq->update_job( $added_job ), 2, "meta_data & updated";
 $new_job = $jq->load_job( $added_job );
 isa_ok( $new_job, 'Redis::JobQueue::Job');
-is_deeply $new_job->meta_data, $added_job->meta_data, 'correct loaded hash';
+is_deeply $new_job->meta_data( 'foo' ), $added_job->meta_data( 'foo' ), 'correct loaded hash';
 
 # get_job_ids
 is scalar( $jq->get_job_ids ), 1, 'there is a single job';

@@ -30,4 +30,4 @@ requires:
   Redis: 1.926
   Storable: 2.39
   perl: 5.010
-version: 1.02
+version: 1.04

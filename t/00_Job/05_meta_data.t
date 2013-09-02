@@ -40,11 +40,11 @@ ok( ( firstidx { $_ eq 'meta_data' } Redis::JobQueue::Job->job_attributes ) != -
 is_deeply $job->meta_data, {}, 'empty hash by default';
 ok !exists( $job->meta_data->{ fake } ), 'key does not exist';
 is $job->meta_data( 'fake' ), undef, 'key does not exist';
-ok $job->{_variability}->{meta_data}, 'meta_data changed';
-$job->clear_variability( 'meta_data' );
-ok !$job->{_variability}->{meta_data}, 'meta_data unchanged';
+ok $job->{_modified}->{meta_data}, 'meta_data changed';
+$job->clear_modified( 'meta_data' );
+ok !$job->{_modified}->{meta_data}, 'meta_data unchanged';
 is $job->meta_data( 'fake', '123' ), undef, 'when set to no return';
-ok $job->{_variability}->{meta_data}, 'meta_data changed';
+ok $job->{_modified_meta_data}->{fake}, 'meta_data changed';
 ok exists( $job->meta_data->{ fake } ), 'key exists';
 is $job->meta_data( 'fake' ), '123', 'correct value';
 is_deeply $job->meta_data, { fake => '123' }, 'correct hash';
