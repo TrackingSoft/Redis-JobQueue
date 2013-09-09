@@ -8,7 +8,8 @@ Revision history for Redis::JobQueue package
     - Change the 'completed' attribute sets 'failed' to 0,
       the change 'failed' sets 'completed' to 0.
       The attributes 'completed' and 'failed' are mutually exclusive.
-    - Method 'update_job' accesses the Redis server only if there is data to update.
+    - Method 'update_job' accesses the Redis server only if there is some
+      data to update.
     FIXES:
     - $@ is localized before we attempt to catch an exception.
 
