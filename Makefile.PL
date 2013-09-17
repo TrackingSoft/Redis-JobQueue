@@ -25,6 +25,7 @@ my %config = (
         'Params::Util'          => 1.07,
         'Redis'                 => 1.926,
         'Storable'              => 2.39,
+        'Try::Tiny'             => 0.18,
         },
     BUILD_REQUIRES              => {
         'Net::EmptyPort'        => 0,

@@ -14,11 +14,11 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 1.04
+This documentation refers to C<Redis::JobQueue> version 1.05
 
 =cut
 
-our $VERSION = '1.04';
+our $VERSION = '1.05';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -70,6 +70,7 @@ use Storable qw(
     nfreeze
     thaw
 );
+use Try::Tiny;
 
 #-- declarations ---------------------------------------------------------------
 
@@ -822,10 +823,12 @@ sub ping {
 
     $self->_error( E_NO_ERROR );
 
-    local $@;
-    my $ret = eval { $self->_redis->ping };
-    $self->_redis_exception( $@ )
-        if $@;
+    my $ret;
+    try {
+        $ret = $self->_redis->ping;
+    } catch {
+        $self->_redis_exception( $_ );
+    };
     return( ( $ret // '<undef>' ) eq 'PONG' ? 1 : 0 );
 }
 
@@ -833,10 +836,12 @@ sub quit {
     my ( $self ) = @_;
 
     $self->_error( E_NO_ERROR );
-    local $@;
-    eval { $self->_redis->quit };
-    $self->_redis_exception( $@ )
-        if $@;
+
+    try {
+        $self->_redis->quit;
+    } catch {
+        $self->_redis_exception( $_ );
+    };
 }
 
 # Statistics based on the jobs that have not yet been removed
@@ -895,7 +900,9 @@ sub _redis_exception {
     }
 
     if ( $self->_transaction ) {
-        eval { $self->_redis->discard };
+        try {
+            $self->_redis->discard;
+        };
         $self->_transaction( 0 );
     }
     die $error;
@@ -906,13 +913,15 @@ sub _redis_constructor {
 
     $self->_error( E_NO_ERROR );
     my $redis;
-    local $@;
-    eval { $redis = Redis->new(
-        server      => $self->_server,
-        encoding    => undef,
-    ) };
-    $self->_redis_exception( $@ )
-        if $@;
+
+    try {
+        $redis = Redis->new(
+            server      => $self->_server,
+            encoding    => undef,
+        );
+    } catch {
+        $self->_redis_exception( $_ );
+    };
     return $redis;
 }
 
@@ -930,7 +939,7 @@ sub _call_redis {
 
     # name of the key hash metadata ends at ':'.NS_METADATA_SUFFIX
     my $suffix = NS_METADATA_SUFFIX;
-    local $@;
+    my $error;
     if ( $method eq 'HSET' and ( $_[1] =~ /^(workload|result)$/ or $_[0] =~ /:$suffix$/ ) ) {
         # use $_[0..2] to reduce data copies
         # $_[0] - key
@@ -941,19 +950,24 @@ sub _call_redis {
 
         if ( length( $$data_ref ) > $self->max_datasize ) {
             if ( $self->_transaction ) {
-                eval { $self->_redis->discard };
+                try {
+                    $self->_redis->discard;
+                };
                 $self->_transaction( 0 );
             }
             # 'die' as maybe too long to analyze the data output from the 'confess'
             die $self->_error( E_DATA_TOO_LARGE ).': '.$_[1];
         }
 
-        @result = eval {
-            return $self->_redis->$method(
-                $_[0],                      # key
-                $_[1],                      # field
+        my ( $key, $field ) = @_;
+        try {
+            @result = $self->_redis->$method(
+                $key,                      # key
+                $field,                      # field
                 $$data_ref,
-                );
+            );
+        } catch {
+            $error = $_;
         };
     }
 # In our case, the user sends data to the job queue and then gets it back.
@@ -982,13 +996,16 @@ sub _call_redis {
         confess $self->_error( E_MISMATCH_ARG )." (utf8 in $_[1])";
     }
     else {
-        @result = eval {
-                return $self->_redis->$method( @_ );
-            };
+        my @args = @_;
+        try {
+            @result = $self->_redis->$method( @args );
+        } catch {
+            $error = $_;
+        };
     }
 
-    $self->_redis_exception( $@ )
-        if $@;
+    $self->_redis_exception( $error )
+        if $error;
 
     $self->_transaction( 1 )
         if $method eq 'MULTI';

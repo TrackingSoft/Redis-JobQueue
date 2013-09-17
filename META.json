@@ -43,10 +43,11 @@
             "Params::Util" : "1.07",
             "Redis" : "1.926",
             "Storable" : "2.39",
+            "Try::Tiny" : "0.18",
             "perl" : "5.010"
          }
       }
    },
    "release_status" : "stable",
-   "version" : "1.04"
+   "version" : "1.05"
 }

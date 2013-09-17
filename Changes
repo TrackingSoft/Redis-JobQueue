@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+1.05  Wed Sep  18 2013
+    CHANGES:
+    - Use Try::Tiny for proper preservation of $@ .
+
 1.04  Thu Sep  05 2013
     CHANGES:
     - Method 'clear_variability' renamed to 'clear_modified'.

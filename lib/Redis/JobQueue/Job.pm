@@ -13,11 +13,11 @@ Redis::JobQueue::Job - Object interface for creating and manipulating jobs
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 1.04
+This documentation refers to C<Redis::JobQueue::Job> version 1.05
 
 =cut
 
-our $VERSION = '1.04';
+our $VERSION = '1.05';
 
 use Exporter qw( import );
 our @EXPORT_OK  = qw(
@@ -38,6 +38,7 @@ use Mouse;                                      # automatically turns on strict 
 use Mouse::Util::TypeConstraints;
 use Params::Util qw(
     _HASH0
+    _INSTANCE
 );
 
 #-- declarations ---------------------------------------------------------------
@@ -84,7 +85,7 @@ around BUILDARGS => sub {
     my $orig  = shift;
     my $class = shift;
 
-    if ( eval { $_[0]->isa( __PACKAGE__ ) } ) {
+    if ( _INSTANCE( $_[0], __PACKAGE__ ) ) {
         my $job = shift;
         return $class->$orig( ( map { ( $_, $job->$_ ) } $job->job_attributes ), @_ );
     }
