@@ -1557,7 +1557,7 @@ The age of the oldest job (the lifetime of the queue) in the active queue.
 
 =item * C<min_job_age>
 
-The age of the youngest job in the acitve queue.
+The age of the youngest job in the active queue.
 
 =item * C<lifetime>
 
