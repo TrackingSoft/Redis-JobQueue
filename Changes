@@ -1,5 +1,7 @@
 Revision history for Redis::JobQueue package
 
+    - Fix runtime loading of Test::PureASCII
+
 1.05  Wed Sep  18 2013
     CHANGES:
     - Use Try::Tiny for proper preservation of $@ .
