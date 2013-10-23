@@ -29,6 +29,7 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    NAMESPACE
 
     E_NO_ERROR
     E_MISMATCH_ARG
@@ -276,7 +277,7 @@ SKIP:
     eval { $job = $jq->add_job( $pre_job ) } for ( 1..10 );
     @jobs = $jq->get_job_ids;
     ok scalar( @jobs ), "the jobs added";
-    $jq->delete_job( $_ ) foreach @jobs;
+    $jq->_call_redis( 'DEL', NAMESPACE.':'.$_ ) foreach @jobs;
 
     eval {
         while ( my $job = $jq->get_next_job(

@@ -106,30 +106,30 @@ foreach my $field ( keys %{$pre_job} )
     {
         $job->$field( $job->$field."wrong" );
         is scalar( $job->modified_attributes ), 1, "is modified field";
-        ok !$jq->update_job( $job ), "job not found";
+        ok !$jq->update_job( $job ), "(id) job not found";
     }
     elsif ( $field eq 'expire' )
     {
         my $key = Redis::JobQueue::NAMESPACE.":".$job->id;
         ok $jq->_call_redis( 'TTL', $key ), "EXPIRE is";
         $job->$field( 0 );
-        is $job->$field, 0, "a valid value (".$job->$field.")";
+        is $job->$field, 0, "a valid value ($field = ".$job->$field.")";
         ok !$jq->update_job( $job ), "job not updated";
         ok $jq->_call_redis( 'TTL', $key ), "EXPIRE is";
         $new_job = $jq->load_job( $job->id );
-        isnt $new_job->$field, $job->$field, "a valid value (".$job->$field.")";
+        isnt $new_job->$field, $job->$field, "a valid value ($field = ".$job->$field.")";
     }
     elsif ( $field =~ /^workload|^result/ )
     {
         ok $jq->update_job( $job ), "successful update";
         $new_job = $jq->load_job( $job->id );
-        is ${$new_job->$field}, ${$job->$field}, "a valid value (".${$new_job->$field}.")";
+        is ${$new_job->$field}, ${$job->$field}, "a valid value ($field = ".${$new_job->$field}.")";
     }
     else
     {
         ok $jq->update_job( $job ), "successful update";
         $new_job = $jq->load_job( $job->id );
-        is $new_job->$field, $job->$field, "a valid value (".$job->$field.")";
+        is $new_job->$field, $job->$field, "a valid value ($field = ".$job->$field.")";
     }
 }
 

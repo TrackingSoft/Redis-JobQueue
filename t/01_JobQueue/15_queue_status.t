@@ -120,7 +120,7 @@ foreach my $queue ( ( $pre_job->{queue}, $job ) )
     my $qstatus = $jq->queue_status( $queue );
     note "queue status = ", Dumper( $qstatus );
 
-    is $qstatus->{length}, 4, 'correct length';
+    is $qstatus->{length}, 3, 'correct length';
     is $qstatus->{all_jobs}, 4, 'correct all_jobs';
     ok $qstatus->{lifetime}, 'lifetime present';
     ok $qstatus->{max_job_age}, 'max_job_age present';
