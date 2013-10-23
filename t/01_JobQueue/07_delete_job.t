@@ -29,6 +29,7 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    NAMESPACE
     );
 
 use Redis::JobQueue::Job qw(
@@ -59,11 +60,11 @@ if ( !$real_redis )
     }
 }
 my $skip_msg;
-$skip_msg = "Redis server is unavailable" unless ( !$@ and $real_redis and $real_redis->ping );
+$skip_msg = "Redis server is unavailable" unless ( !$@ && $real_redis && $real_redis->ping );
 
 SKIP: {
     diag $skip_msg if $skip_msg;
-    skip( "Redis server is unavailable", 1 ) unless ( !$@ and $real_redis and $real_redis->ping );
+    skip( "Redis server is unavailable", 1 ) unless ( !$@ && $real_redis && $real_redis->ping );
 
 # For real Redis:
 #$redis = $real_redis;
@@ -99,6 +100,7 @@ isa_ok( $job, 'Redis::JobQueue::Job');
 ok $jq->load_job( $job->id ), "job does exist";
 my $id = $job->id;
 is $jq->delete_job( $job ), 1, "job deleted";
+is $jq->_call_redis( 'LLEN', NAMESPACE.':queue:'.$job->queue ), 0, 'queue is empty';
 $job = $jq->load_job( $job->id );
 is $job, undef, "job undefined (job does not exist)";
 is $jq->delete_job( $id ), undef, "job deleted already";
@@ -106,7 +108,7 @@ is $jq->delete_job( $id ), undef, "job deleted already";
 $pre_job->{meta_data} = { foo => 'bar' };
 $job = $jq->add_job( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');
-is $jq->delete_job( $job ), 2, "job deleted (meta_data present)";
+is $jq->delete_job( $job ), 1, "job deleted";
 
 $job = $jq->add_job( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');

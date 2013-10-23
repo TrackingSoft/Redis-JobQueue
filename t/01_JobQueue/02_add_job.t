@@ -79,7 +79,7 @@ my $pre_job = {
     id          => '4BE19672-C503-11E1-BF34-28791473A258',
     queue       => 'lovely_queue',
     job         => 'strong_job',
-    expire      => 30,
+    expire      => 300,
     status      => 'created',
     workload    => \'Some stuff up to 512MB long',
     result      => \'JOB result comes here, up to 512MB long',
@@ -173,17 +173,17 @@ $job3 = $jq->add_job(
     );
 
 is scalar( @arr = $jq->_call_redis( 'LRANGE', Redis::JobQueue::NAMESPACE.":queue:".$job2->queue, 0, -1 ) ), 2, "queue exists: @arr";
-is scalar( @arr = $jq->_call_redis( 'HGETALL', Redis::JobQueue::NAMESPACE.":".$job2->id ) ), ( scalar keys %{$pre_job} ) * 2, "right hash";
+is scalar( @arr = $jq->_call_redis( 'HGETALL', Redis::JobQueue::NAMESPACE.":".$job2->id ) ), ( scalar keys %{$pre_job} ) * 2 + 2, "right hash"; # +2 for _SERVICE_FIELD
 
 foreach my $field ( keys %{$pre_job} )
 {
     if ( $field =~ /^workload|^result/ )
     {
-        is $jq->_call_redis( 'HGET', Redis::JobQueue::NAMESPACE.":".$job2->id, $field ), ${$job2->$field}, "a valid value (".${$job2->$field}.")";
+        is $jq->_call_redis( 'HGET', Redis::JobQueue::NAMESPACE.":".$job2->id, $field ), ${$job2->$field}, "a valid value ($field = ".${$job2->$field}.")";
     }
     else
     {
-        is $jq->_call_redis( 'HGET', Redis::JobQueue::NAMESPACE.":".$job2->id, $field ), $job2->$field, "a valid value (".$job2->$field.")";
+        is $jq->_call_redis( 'HGET', Redis::JobQueue::NAMESPACE.":".$job2->id, $field ), $job2->$field, "a valid value ($field = ".$job2->$field.")";
     }
 }
 

@@ -6,3 +6,4 @@
 /benchmark_*
 /crash.t
 /Makefile.old
+/Redis-*.tar.gz

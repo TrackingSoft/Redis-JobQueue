@@ -1,25 +1,30 @@
 package Redis::JobQueue::Job;
 
-# Pragmas
-use 5.010;
-use strict;
-use warnings;
-
-# ENVIRONMENT ------------------------------------------------------------------
-
 =head1 NAME
 
 Redis::JobQueue::Job - Object interface for creating and manipulating jobs
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 1.05
+This documentation refers to C<Redis::JobQueue::Job> version 1.06
 
 =cut
 
-our $VERSION = '1.05';
+#-- Pragmas --------------------------------------------------------------------
 
-use Exporter qw( import );
+use 5.010;
+use strict;
+use warnings;
+
+# ENVIRONMENT ------------------------------------------------------------------
+
+our $VERSION = '1.06';
+
+#-- load the modules -----------------------------------------------------------
+
+use Exporter qw(
+    import
+);
 our @EXPORT_OK  = qw(
     STATUS_CREATED
     STATUS_WORKING
@@ -42,285 +47,6 @@ use Params::Util qw(
 );
 
 #-- declarations ---------------------------------------------------------------
-
-use constant {
-    STATUS_CREATED      => '__created__',
-    STATUS_WORKING      => '__working__',
-    STATUS_COMPLETED    => '__completed__',
-    STATUS_FAILED       => '__failed__',
-};
-
-my $meta = __PACKAGE__->meta;
-
-subtype __PACKAGE__.'::NonNegInt',
-    as 'Int',
-    where { $_ >= 0 },
-    message { ( $_ || '' ).' is not a non-negative integer!' },
-;
-
-subtype __PACKAGE__.'::Progress',
-    as 'Num',
-    where { $_ >= 0 and $_ <= 1 },
-    message { ( $_ || '' ).' is not a progress number!' },
-;
-
-subtype __PACKAGE__.'::WOSpStr',
-    as 'Str',
-    where { $_ !~ / / },
-    message { ( $_ || '' ).' contains spaces!' },
-;
-
-subtype __PACKAGE__.'::DataRef',
-    as 'ScalarRef'
-;
-
-coerce __PACKAGE__.'::DataRef',
-    from 'Str',
-    via { \$_ },
-;
-
-#-- constructor ----------------------------------------------------------------
-
-around BUILDARGS => sub {
-    my $orig  = shift;
-    my $class = shift;
-
-    if ( _INSTANCE( $_[0], __PACKAGE__ ) ) {
-        my $job = shift;
-        return $class->$orig( ( map { ( $_, $job->$_ ) } $job->job_attributes ), @_ );
-    }
-    else {
-        return $class->$orig( @_ );
-    }
-};
-
-#-- public attributes ----------------------------------------------------------
-
-has 'id'            => (
-    is          => 'rw',
-    isa         => __PACKAGE__.'::WOSpStr',
-    default     => '',
-    trigger     => sub { $_[0]->_modified_set( 'id' ) },
-);
-
-has 'queue'         => (
-    is          => 'rw',
-    isa         => 'Maybe[Str]',
-    required    => 1,
-    trigger     => sub { $_[0]->_modified_set( 'queue' ) },
-);
-
-has 'job'           => (
-    is          => 'rw',
-    isa         => 'Maybe[Str]',
-    default     => '',
-    trigger     => sub { $_[0]->_modified_set( 'job' ) },
-);
-
-has 'status'        => (
-    is          => 'rw',
-    isa         => 'Str',
-    default     => STATUS_CREATED,
-    trigger     => sub { $_[0]->_modified_set( 'status', $_[1] ) },
-);
-
-has '_meta_data'     => (
-    is          => 'rw',
-    isa         => 'HashRef',
-    init_arg    => 'meta_data',
-    default     => sub { {} },
-);
-
-has 'expire'        => (
-    is          => 'rw',
-    isa         => 'Maybe['.__PACKAGE__.'::NonNegInt]',
-    required    => 1,
-    trigger     => sub { $_[0]->_modified_set( 'expire' ) },
-);
-
-for my $name ( qw( workload result ) ) {
-    has $name           => (
-        is          => 'rw',
-        # A reference because attribute can contain a large amount of data
-        isa         => __PACKAGE__.'::DataRef | HashRef | ArrayRef | ScalarRef | Object',
-        coerce      => 1,
-        builder     => '_build_data',           # will throw an error if you pass a bare non-subroutine reference as the default
-        trigger     => sub { $_[0]->_modified_set( $name ) },
-    );
-}
-
-has 'progress'      => (
-    is          => 'rw',
-    isa         => __PACKAGE__.'::Progress',
-    default     => 0,
-    trigger     => sub { $_[0]->_modified_set( 'progress' ) },
-);
-
-has 'message'       => (
-    is          => 'rw',
-    isa         => 'Maybe[Str]',
-    default     => '',
-    trigger     => sub { $_[0]->_modified_set( 'message' ) },
-);
-
-for my $name ( qw( created updated ) ) {
-    has $name           => (
-        is          => 'rw',
-        isa         => __PACKAGE__.'::NonNegInt',
-        default     => sub { time },
-        trigger     => sub { $_[0]->_modified_set( $name ) },
-    );
-}
-
-for my $name ( qw( started completed failed ) ) {
-    has $name           => (
-        is          => 'rw',
-        isa         => __PACKAGE__.'::NonNegInt',
-        default     => 0,
-        trigger     => sub { $_[0]->_modified_set( $name ) },
-    );
-}
-
-#-- private attributes ---------------------------------------------------------
-
-has '_modified'   => (
-    is          => 'ro',
-    isa         => 'HashRef[Int]',
-    lazy        => 1,
-    init_arg    => undef,                       # we make it impossible to set this attribute when creating a new object
-    builder     => '_build_modified',
-);
-
-has '_modified_meta_data'   => (
-    is          => 'rw',
-    isa         => 'HashRef[Int]',
-    lazy        => 1,
-    init_arg    => undef,                       # we make it impossible to set this attribute when creating a new object
-    default     => sub { return {}; },
-);
-
-#-- public methods -------------------------------------------------------------
-
-sub clear_modified {
-    my ( $self, @fields ) = @_;
-
-    unless ( @fields ) {
-        $self->clear_modified( $self->job_attributes );
-        my @keys = keys %{ $self->_modified_meta_data };
-        $self->clear_modified( @keys )
-            if @keys;
-        return;
-    }
-
-    foreach my $field ( @fields ) {
-        if    ( exists $self->_modified->{ $field } ) { $self->_modified->{ $field } = 0 }
-        elsif ( exists $self->_modified_meta_data->{ $field } ) { $self->_modified_meta_data->{ $field } = 0 }
-    }
-}
-
-sub modified_attributes {
-    my ( $self ) = @_;
-
-    my @all_modified = (
-        grep( { $self->_modified->{ $_ } } $self->job_attributes ),
-        grep( { $self->_modified_meta_data->{ $_ } } keys( %{ $self->_modified_meta_data } ) ),
-    );
-
-    return @all_modified;
-}
-
-my %_attributes = map { ( $_->name eq '_meta_data' ? 'meta_data' : $_->name ) => 1 } grep { $_->name !~ /^_modified/ } $meta->get_all_attributes;
-
-sub job_attributes {
-    return( sort keys %_attributes );
-}
-
-sub elapsed {
-    my ( $self ) = @_;
-
-    if ( my $started = $self->started ) {
-        return( ( $self->completed || $self->failed || time ) - $started );
-    }
-    else {
-        return( undef );
-    }
-}
-
-sub meta_data {
-    my ( $self, $key, $val ) = @_;
-
-    return $self->_meta_data if !defined $key;
-
-    # metadata can be set with an external hash
-    if ( _HASH0( $key ) ) {
-        foreach my $field ( keys %$key ) {
-            confess 'The name of the metadata field the same as standart job field name'
-                if exists $_attributes{ $field };
-        }
-        $self->_meta_data( $key );
-        $self->_modified_meta_data( {} );
-        $self->_modified_meta_data->{ $_ } = 1
-            foreach keys %$key;
-        return;
-    }
-
-    # getter
-    return $self->_meta_data->{ $key } if !defined $val;
-
-    # setter
-    confess 'The name of the metadata field the same as standart job field name'
-        if exists $_attributes{ $key };
-    $self->_meta_data->{ $key } = $val;
-    ++$self->_modified_meta_data->{ $key };
-
-    # job data change
-    $self->updated( time );
-    ++$self->_modified->{ 'updated' };
-
-    return;
-}
-
-#-- private methods ------------------------------------------------------------
-
-sub _build_data {
-    return \'';
-}
-
-sub _build_modified {
-    my ( $self ) = @_;
-
-    my %modified;
-    map { $modified{ $_ } = 1 } $self->job_attributes;
-    return \%modified;
-}
-
-sub _modified_set {
-    my $self    = shift;
-    my $field   = shift;
-
-    if ( $field =~ /^(status|meta_data|workload|result|progress|message|started|completed|failed)$/ ) {
-        $self->updated( time );
-        ++$self->_modified->{ 'updated' };
-    }
-
-    if ( $field eq 'status' ) {
-        my $new_status = shift;
-        if      ( $new_status eq STATUS_CREATED )   { $self->created( time ) }
-        elsif   ( $new_status eq STATUS_WORKING )   { $self->started( time ) unless $self->started }
-        elsif   ( $new_status eq STATUS_COMPLETED ) { $self->completed( time ) }
-        elsif   ( $new_status eq STATUS_FAILED )    { $self->failed( time ) }
-    }
-
-    ++$self->_modified->{ $field };
-}
-
-#-- Closes and cleans up -------------------------------------------------------
-
-no Mouse::Util::TypeConstraints;
-no Mouse;                                       # keywords are removed from the package
-__PACKAGE__->meta->make_immutable();
-
-__END__
 
 =head1 SYNOPSIS
 
@@ -360,7 +86,7 @@ For example:
 
     my $id = $job->id;
     # 'workload' and 'result' return a reference to the data
-    my $result = ${$job->result};
+    my $result = ${ $job->result };
 
 Returns a list of names of the modified object fields:
 
@@ -392,6 +118,80 @@ Supports the creation of the job object, an automatic allowance for the change
 attributes and the ability to cleanse the signs of change attributes.
 
 =back
+
+=head1 EXPORT
+
+None by default.
+
+The following additional constants, defining defaults for various parameters, are available for export:
+
+=over
+
+=item C<STATUS_CREATED>
+
+Initial status of the job, showing that it was created.
+
+=cut
+use constant STATUS_CREATED     => '__created__';
+
+=item C<STATUS_WORKING>
+
+Jobs is being executed. Set by the worker function.
+
+=cut
+use constant STATUS_WORKING     => '__working__';
+
+=item C<STATUS_COMPLETED>
+
+Job is completed. Set by the worker function.
+
+=cut
+use constant STATUS_COMPLETED   => '__completed__';
+
+=item C<STATUS_FAILED>
+
+Job has failed. Set by the worker function.
+
+=cut
+use constant STATUS_FAILED      => '__failed__';
+
+=back
+
+User himself should specify the status L</ STATUS_WORKING>, L</ STATUS_COMPLETED>, L</ STATUS_FAILED>
+or own status when processing the job.
+
+=cut
+
+my $meta = __PACKAGE__->meta;
+
+subtype __PACKAGE__.'::NonNegInt',
+    as 'Int',
+    where { $_ >= 0 },
+    message { ( $_ || '' ).' is not a non-negative integer!' },
+;
+
+subtype __PACKAGE__.'::Progress',
+    as 'Num',
+    where { $_ >= 0 and $_ <= 1 },
+    message { ( $_ || '' ).' is not a progress number!' },
+;
+
+subtype __PACKAGE__.'::WOSpStr',
+    as 'Str',
+    where { $_ !~ / / },
+    message { ( $_ || '' ).' contains spaces!' },
+;
+
+subtype __PACKAGE__.'::DataRef',
+    as 'ScalarRef'
+;
+
+coerce __PACKAGE__.'::DataRef',
+    from 'Str',
+    via { \$_ },
+;
+
+#-- constructor ----------------------------------------------------------------
 
 =head2 CONSTRUCTOR
 
@@ -445,6 +245,21 @@ Do not use spaces in an C<id> attribute value.
 Each element in the struct data has an accessor method, which is
 used to assign and fetch the element's value.
 
+=cut
+around BUILDARGS => sub {
+    my $orig  = shift;
+    my $class = shift;
+
+    if ( _INSTANCE( $_[0], __PACKAGE__ ) ) {
+        my $job = shift;
+        return $class->$orig( ( map { ( $_, $job->$_ ) } $job->job_attributes ), @_ );
+    } else {
+        return $class->$orig( @_ );
+    }
+};
+
+#-- public attributes ----------------------------------------------------------
+
 =head2 METHODS
 
 An error will cause the program to halt if the argument is not valid.
@@ -482,14 +297,77 @@ A write method can receive both data or a reference to the data.
 
 =back
 
+=cut
+has 'id'            => (
+    is          => 'rw',
+    isa         => __PACKAGE__.'::WOSpStr',
+    default     => '',
+    trigger     => sub { $_[0]->_modified_set( 'id' ) },
+);
+
+has 'queue'         => (
+    is          => 'rw',
+    isa         => 'Maybe[Str]',
+    required    => 1,
+    trigger     => sub { $_[0]->_modified_set( 'queue' ) },
+);
+
+has 'job'           => (
+    is          => 'rw',
+    isa         => 'Maybe[Str]',
+    default     => '',
+    trigger     => sub { $_[0]->_modified_set( 'job' ) },
+);
+
+has 'status'        => (
+    is          => 'rw',
+    isa         => 'Str',
+    default     => STATUS_CREATED,
+    trigger     => sub { $_[0]->_modified_set( 'status', $_[1] ) },
+);
+
+has 'expire'        => (
+    is          => 'rw',
+    isa         => 'Maybe['.__PACKAGE__.'::NonNegInt]',
+    required    => 1,
+    trigger     => sub { $_[0]->_modified_set( 'expire' ) },
+);
+
+for my $name ( qw( workload result ) ) {
+    has $name           => (
+        is          => 'rw',
+        # A reference because attribute can contain a large amount of data
+        isa         => __PACKAGE__.'::DataRef | HashRef | ArrayRef | ScalarRef | Object',
+        coerce      => 1,
+        builder     => '_build_data',           # will throw an error if you pass a bare non-subroutine reference as the default
+        trigger     => sub { $_[0]->_modified_set( $name ) },
+    );
+}
+
 =head3 C<progress>
 
 Optional attribute, the progress of the task,
 contains a user-defined value from 0 to 1.
 
+=cut
+has 'progress'      => (
+    is          => 'rw',
+    isa         => __PACKAGE__.'::Progress',
+    default     => 0,
+    trigger     => sub { $_[0]->_modified_set( 'progress' ) },
+);
+
 =head3 C<message>
 
 Optional attribute, a string message with additional user-defined information.
+
+=cut
+has 'message'       => (
+    is          => 'rw',
+    isa         => 'Maybe[Str]',
+    default     => '',
+    trigger     => sub { $_[0]->_modified_set( 'message' ) },
+);
 
 =head3 C<created>
 
@@ -499,15 +377,6 @@ Set to the current time (C<time>) when job is created.
 If necessary, alternative value can be set as:
 
     $job->created( time );
-
-=head3 C<started>
-
-Returns the time (UTC) that the job started processing.
-Set to the current time (C<time>) when the L</status> of the job is set to L</STATUS_WORKING>.
-
-If necessary, you can set your own value, for example:
-
-    $job->started( time );
 
 =head3 C<updated>
 
@@ -519,6 +388,25 @@ L</status>, L</workload>, L</result>, L</progress>, L</message>, L</completed>, 
 Can be updated manually:
 
     $job->updated( time );
+
+=cut
+for my $name ( qw( created updated ) ) {
+    has $name           => (
+        is          => 'rw',
+        isa         => __PACKAGE__.'::NonNegInt',
+        default     => sub { time },
+        trigger     => sub { $_[0]->_modified_set( $name ) },
+    );
+}
+
+=head3 C<started>
+
+Returns the time (UTC) that the job started processing.
+Set to the current time (C<time>) when the L</status> of the job is set to L</STATUS_WORKING>.
+
+If necessary, you can set your own value, for example:
+
+    $job->started( time );
 
 =head3 C<completed>
 
@@ -550,11 +438,59 @@ Can be modified manually:
 Change the C<failed> attribute sets C<completed> = 0.
 The attributes C<failed> and C<completed> are mutually exclusive.
 
+=cut
+for my $name ( qw( started completed failed ) ) {
+    has $name           => (
+        is          => 'rw',
+        isa         => __PACKAGE__.'::NonNegInt',
+        default     => 0,
+        trigger     => sub { $_[0]->_modified_set( $name ) },
+    );
+}
+
+#-- private attributes ---------------------------------------------------------
+
+has '_meta_data'    => (
+    is          => 'rw',
+    isa         => 'HashRef',
+    init_arg    => 'meta_data',
+    default     => sub { {} },
+);
+
+has '__modified'    => (
+    is          => 'ro',
+    isa         => 'HashRef[Int]',
+    lazy        => 1,
+    init_arg    => undef,                       # we make it impossible to set this attribute when creating a new object
+    builder     => '_build_modified',
+);
+
+has '__modified_meta_data'  => (
+    is          => 'rw',
+    isa         => 'HashRef[Int]',
+    lazy        => 1,
+    init_arg    => undef,                       # we make it impossible to set this attribute when creating a new object
+    default     => sub { return {}; },
+);
+
+#-- public methods -------------------------------------------------------------
+
 =head3 C<elapsed>
 
 Returns the time (in seconds) since the job started processing (see L</started>)
 till job L</completed> or L</failed> or to the current time.
 Returns C<undef> if the start processing time was set to 0.
+
+=cut
+sub elapsed {
+    my ( $self ) = @_;
+
+    if ( my $started = $self->started ) {
+        return( ( $self->completed || $self->failed || time ) - $started );
+    } else {
+        return( undef );
+    }
+}
 
 =head3 C<meta_data>
 
@@ -585,53 +521,137 @@ For example:
     );
 
 The name of the metadata fields should not match the standard names returned by
-L</job_attributes>.
+L</job_attributes> and must not begin with C<'__'}>.
 An invalid name causes die (C<confess>).
+
+=cut
+my %_attributes = map { ( $_->name eq '_meta_data' ? 'meta_data' : $_->name ) => 1 } grep { substr( $_->name, 0, 2 ) ne '__' } $meta->get_all_attributes;
+
+sub meta_data {
+    my ( $self, $key, $val ) = @_;
+
+    return $self->_meta_data
+        if !defined $key;
+
+    # metadata can be set with an external hash
+    if ( _HASH0( $key ) ) {
+        foreach my $field ( keys %$key ) {
+            confess 'The name of the metadata field the same as standart job field name'
+                if exists $_attributes{ $field } || substr( $field, 0, 2 ) eq '__';
+        }
+        $self->_meta_data( $key );
+        $self->__modified_meta_data( {} );
+        $self->__modified_meta_data->{ $_ } = 1
+            foreach keys %$key;
+        return;
+    }
+
+    # getter
+    return $self->_meta_data->{ $key }
+        if !defined $val;
+
+    # setter
+    confess 'The name of the metadata field the same as standart job field name'
+        if exists $_attributes{ $key } || substr( $key, 0, 2 ) eq '__';
+    $self->_meta_data->{ $key } = $val;
+    ++$self->__modified_meta_data->{ $key };
+
+    # job data change
+    $self->updated( time );
+    ++$self->__modified->{ 'updated' };
+
+    return;
+}
 
 =head3 C<clear_modified( @fields )>
 
 Resets the sign of any specified attributes that have been changed.
 If no attribute names are specified, the signs are reset for all attributes.
 
+=cut
+sub clear_modified {
+    my ( $self, @fields ) = @_;
+
+    unless ( @fields ) {
+        $self->clear_modified( $self->job_attributes );
+        my @keys = keys %{ $self->__modified_meta_data };
+        $self->clear_modified( @keys )
+            if @keys;
+        return;
+    }
+
+    foreach my $field ( @fields ) {
+        if    ( exists $self->__modified->{ $field } ) { $self->__modified->{ $field } = 0 }
+        elsif ( exists $self->__modified_meta_data->{ $field } ) { $self->__modified_meta_data->{ $field } = 0 }
+    }
+}
+
 =head3 C<modified_attributes>
 
 Returns a list of names of the object attributes that have been modified.
+
+=cut
+sub modified_attributes {
+    my ( $self ) = @_;
+
+    my @all_modified = (
+        grep( { $self->__modified->{ $_ } } $self->job_attributes ),
+        grep( { $self->__modified_meta_data->{ $_ } } keys( %{ $self->__modified_meta_data } ) ),
+    );
+
+    return @all_modified;
+}
 
 =head3 C<job_attributes>
 
 Returns a sorted list of the names of object attributes.
 
-=head1 EXPORT
+=cut
+sub job_attributes {
+    return( sort keys %_attributes );
+}
 
-None by default.
+#-- private methods ------------------------------------------------------------
 
-Additional constants are available for import, which can be used
-to define some type of parameters.
+sub _build_data {
+    return \'';
+}
 
-These are the defaults:
+sub _build_modified {
+    my ( $self ) = @_;
 
-=over
+    my %modified;
+    map { $modified{ $_ } = 1 } $self->job_attributes;
+    return \%modified;
+}
 
-=item C<STATUS_CREATED>
+sub _modified_set {
+    my $self    = shift;
+    my $field   = shift;
 
-Initial status of the job, showing that it was created.
+    if ( $field =~ /^(status|meta_data|workload|result|progress|message|started|completed|failed)$/ ) {
+        $self->updated( time );
+        ++$self->__modified->{ 'updated' };
+    }
 
-=item C<STATUS_WORKING>
+    if ( $field eq 'status' ) {
+        my $new_status = shift;
+        if      ( $new_status eq STATUS_CREATED )   { $self->created( time ) }
+        elsif   ( $new_status eq STATUS_WORKING )   { $self->started( time ) unless $self->started }
+        elsif   ( $new_status eq STATUS_COMPLETED ) { $self->completed( time ) }
+        elsif   ( $new_status eq STATUS_FAILED )    { $self->failed( time ) }
+    }
 
-Jobs is being executed. Set by the worker function.
+    ++$self->__modified->{ $field };
+}
 
-=item C<STATUS_COMPLETED>
+#-- Closes and cleans up -------------------------------------------------------
 
-Job is completed. Set by the worker function.
+no Mouse::Util::TypeConstraints;
+no Mouse;                                       # keywords are removed from the package
+__PACKAGE__->meta->make_immutable();
 
-=item C<STATUS_FAILED>
-
-Job has failed. Set by the worker function.
-
-=back
-
-User himself should specify the status L</ STATUS_WORKING>, L</ STATUS_COMPLETED>, L</ STATUS_FAILED>
-or own status when processing the job.
+__END__
 
 =head1 DIAGNOSTICS
 

@@ -129,10 +129,8 @@ is scalar( $jq->get_job_ids ), 1, 'there is a single job';
 # delete_job
 my $key = Redis::JobQueue::NAMESPACE.':'.$added_job->id;
 ok $jq->_call_redis( 'EXISTS', $key ), 'data hash exists';
-ok $jq->_call_redis( 'EXISTS', $jq->_get_meta_data_key( $key ) ), 'metadata hash exists';
 ok $jq->delete_job( $added_job ), "job deleted";
 ok !$jq->_call_redis( 'EXISTS', $key ), 'data hash does not exists';
-ok !$jq->_call_redis( 'EXISTS', $jq->_get_meta_data_key( $key ) ), 'metadata hash does not exists';
 
 # get_job_ids
 is scalar( $jq->get_job_ids ), 0, 'no job';
