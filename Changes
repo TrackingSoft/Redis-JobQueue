@@ -1,14 +1,14 @@
-	Revision history for Redis::JobQueue package
+Revision history for Redis::JobQueue package
 
-1.06  Wed Oct  25 2013
+1.06  Fri Oct  25 2013
     CHANGES:
     - 'delete_job' removes job id record from the queue list.
       This helps to properly diagnose cases when job data was removed by Redis OOM handler
       rather than explicitly deleted by user.
     - Use single hash for storing all job data on Redis server.
     - Removed 'NS_METADATA_SUFFIX' constant.
-
-    - Fix runtime loading of Test::PureASCII
+    FIXES:
+    - Fix runtime loading of Test::*
 
 1.05  Wed Sep  18 2013
     CHANGES:

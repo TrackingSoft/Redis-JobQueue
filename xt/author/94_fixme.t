@@ -6,7 +6,7 @@ use warnings;
 
 use Test::More;
 
-eval "use Test::Fixme";
+eval 'use Test::Fixme'; ## no critic
 plan skip_all => "Test::Fixme required for testing Fixme" if $@;
 run_tests(
 #    where       => 'lib',      # where to find files to check

@@ -868,9 +868,8 @@ sub add_job {
 
     my $id_in_list = $id;
 
-    if ( $expire ) 
-    {
-        $id_in_list .= ' ' . ( time + $expire );
+    if ( $expire ) {
+        $id_in_list .= ' '.( time + $expire );
         $self->_call_redis( 'EXPIRE', $key, $expire );
     }
 
@@ -895,7 +894,7 @@ Returns C<undef> when the job was not found on Redis server.
 The method returns the jobs data from the Redis server.
 See L<Redis::JobQueue::Job|Redis::JobQueue::Job> for the list of standard jobs data fields.
 
-The method returns a reference to a hash of the standard jobs data fields if only the first 
+The method returns a reference to a hash of the standard jobs data fields if only the first
 argument is specified.
 
 If given a key name C<$data_key>, it returns data corresponding to
@@ -1281,10 +1280,10 @@ The following examples illustrate uses of the C<delete_job> method:
     # or
     $jq->delete_job( $id );
 
-Use this method soon after receiving the results of the job to free memory on 
+Use this method soon after receiving the results of the job to free memory on
 the Redis server.
 
-See description of the C<Redis::JobQueue> data structure used on the Redis server 
+See description of the C<Redis::JobQueue> data structure used on the Redis server
 at the L</"JobQueue data structure stored in Redis"> section.
 
 Note that job deletion time is proportional to number of jobs currently in the queue.
@@ -2080,7 +2079,7 @@ the job queue objects.
 
 It may not be possible to use this module with the cluster of Redis servers
 because full name of some Redis keys may not be known at the time of the call
-to Lua script (C<'EVAL'> or C<'EVALSHA'> command). Redis server may not be able 
+to Lua script (C<'EVAL'> or C<'EVALSHA'> command). Redis server may not be able
 to forward the request to the appropriate node in the cluster.
 
 We strongly recommend using of C<maxmemory> option in the C<redis.conf> file if

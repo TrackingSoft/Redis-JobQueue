@@ -7,7 +7,7 @@ use warnings;
 use lib 'lib';
 use Test::More;
 
-eval "use Test::Vars";
+eval 'use Test::Vars';  ## no critic
 plan( skip_all => "Test::Vars required for testing module versions in the distribution." )
     if $@;
 

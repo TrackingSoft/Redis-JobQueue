@@ -7,7 +7,7 @@ use warnings;
 use lib 'lib';
 use Test::More;
 
-eval "use Test::Dist::VersionSync";
+eval 'use Test::Dist::VersionSync'; ## no critic
 plan( skip_all => "Test::Dist::VersionSync required for testing module versions in the distribution." )
     if $@;
 

@@ -6,6 +6,6 @@ use warnings;
 
 use Test::More;
 
-eval { require Test::Kwalitee };
+eval 'require Test::Kwalitee';  ## no critic
 plan skip_all => "Test::Kwalitee required for testing Kwalitee" if $@;
 Test::Kwalitee->import(  );

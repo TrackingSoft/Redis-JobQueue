@@ -8,7 +8,6 @@ use Test::More;
 
 use lib 'lib';
 
-#eval 'use Test::Distribution not => "prereq"';
-eval 'use Test::Distribution not => [ qw/prereq podcover/ ]';
+eval 'use Test::Distribution not => [ qw/prereq podcover/ ]';   ## no critic
 plan( skip_all => 'Test::Distribution not installed' ) if $@;
 Test::Distribution->import(  );
