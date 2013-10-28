@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+1.07 Mon Oct  28 2013
+    CHANGES:
+    - Added to META.yml the list of the modules provided by this distribution.
+
 1.06  Fri Oct  25 2013
     CHANGES:
     - 'delete_job' removes job id record from the queue list.
