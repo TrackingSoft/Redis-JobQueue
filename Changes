@@ -1,5 +1,10 @@
 Revision history for Redis::JobQueue package
 
+1.08 Fri Nov  15 2013
+    CHANGES:
+    - Deleted argument 'encoding' from the Redis::JobQueue->new
+      (Starting with version 1.963, Redis module doesn't support encoding).
+
 1.07 Mon Oct  28 2013
     CHANGES:
     - Added to META.yml the list of the modules provided by this distribution.

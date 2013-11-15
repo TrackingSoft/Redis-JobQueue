@@ -29,12 +29,13 @@ t/01_JobQueue/13_get_job_meta_fields.t
 t/01_JobQueue/14_get_job_data.t
 t/01_JobQueue/15_queue_status.t
 t/01_JobQueue/16_utf8.t
+xt/author/.perlcritic.rc
 xt/author/92_vars.t
-xt/author/93_versions.t
 xt/author/94_fixme.t
 xt/author/95_critic.t
 xt/author/96_PureASCII.t
-xt/release/96_kwalitee.t
+xt/release/95_kwalitee.t
+xt/release/96_kwalitee_extra.t
 xt/release/97_distribution.t
 xt/release/98_pod.t
 xt/release/99_pod_coverage.t

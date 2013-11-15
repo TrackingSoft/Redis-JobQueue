@@ -74,7 +74,7 @@ foreach my $field ( $job->job_attributes )
     }
     else
     {
-        $job->$field( scalar reverse $job->$field // 'Any stuff' );
+       $job->$field( scalar reverse $job->$field // 'Any stuff' );
         is scalar( reverse( $job->$field ) ), $pre_job->{ $field }, "accessor return a valid value (".$job->$field.")";
     }
 }

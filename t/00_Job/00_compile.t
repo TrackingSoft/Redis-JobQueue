@@ -48,7 +48,7 @@ foreach my $method ( @job_fields, @job_methods )
 }
 
 my $val;
-ok( $val = STATUS_CREATED,      "import OK: $val" );
-ok( $val = STATUS_WORKING,      "import OK: $val" );
-ok( $val = STATUS_COMPLETED,    "import OK: $val" );
-ok( $val = STATUS_FAILED,       "import OK: $val" );
+ok( $val = STATUS_CREATED(),    "import OK: $val" );
+ok( $val = STATUS_WORKING(),    "import OK: $val" );
+ok( $val = STATUS_COMPLETED(),  "import OK: $val" );
+ok( $val = STATUS_FAILED(),     "import OK: $val" );

@@ -40,17 +40,17 @@ can_ok( 'Redis::JobQueue', 'max_datasize' );
 can_ok( 'Redis::JobQueue', 'last_errorcode' );
 
 my $val;
-ok( $val = DEFAULT_SERVER,      "import OK: $val" );
-ok( $val = DEFAULT_PORT,        "import OK: $val" );
+ok( $val = DEFAULT_SERVER(),    "import OK: $val" );
+ok( $val = DEFAULT_PORT(),      "import OK: $val" );
 $val = undef;
-ok( defined ( $val = DEFAULT_TIMEOUT ),     "import OK: $val" );
+ok( defined ( $val = DEFAULT_TIMEOUT() ),   "import OK: $val" );
 
-ok( ( $val = E_NO_ERROR ) == 0, "import OK: $val" );
-ok( $val = E_MISMATCH_ARG,      "import OK: $val" );
-ok( $val = E_DATA_TOO_LARGE,    "import OK: $val" );
-ok( $val = E_NETWORK,           "import OK: $val" );
-ok( $val = E_MAX_MEMORY_LIMIT,  "import OK: $val" );
-ok( $val = E_JOB_DELETED,       "import OK: $val" );
-ok( $val = E_REDIS,             "import OK: $val" );
+ok( ( $val = E_NO_ERROR() ) == 0, "import OK: $val" );
+ok( $val = E_MISMATCH_ARG(),      "import OK: $val" );
+ok( $val = E_DATA_TOO_LARGE(),    "import OK: $val" );
+ok( $val = E_NETWORK(),           "import OK: $val" );
+ok( $val = E_MAX_MEMORY_LIMIT(),  "import OK: $val" );
+ok( $val = E_JOB_DELETED(),       "import OK: $val" );
+ok( $val = E_REDIS(),             "import OK: $val" );
 
-ok( $val = Redis::JobQueue::MAX_DATASIZE, "import OK: $val" );
+ok( $val = Redis::JobQueue::MAX_DATASIZE(), "import OK: $val" );

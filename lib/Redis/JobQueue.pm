@@ -6,7 +6,7 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 1.07
+This documentation refers to C<Redis::JobQueue> version 1.08
 
 =cut
 
@@ -18,7 +18,7 @@ use warnings;
 
 # ENVIRONMENT ------------------------------------------------------------------
 
-our $VERSION = '1.07';
+our $VERSION = '1.08';
 
 use Exporter qw(
     import
@@ -575,22 +575,17 @@ local C<redis> server.
 
 =item *
 
-Since L<Redis|Redis> knows nothing about encoding, it forces a utf-8 flag
-on all data by default. If you want to store binary data in your job,
-you can disable automatic encoding by passing an option to
-L<Redis|Redis> C<new>: C<encoding =E<gt> undef>.
+According to L<Redis|Redis> documentation:
+
+This module consider that any data sent to the Redis server is a raw octets string,
+even if it has utf8 flag set.
+And it doesn't do anything when getting data from the Redis server.
 
 =item *
 
-When Redis connection is establed with C<encoding =E<gt> undef>, non-serialize-able
-fields (like status or message) passed in UTF-8 can not be transferred
-correctly to the Redis server.
-
-=item *
-
-By default C<Redis::JobQueue> constructor creates connection to the Redis server
-with C<encoding =E<gt> undef> argument. If a different encoding is desired, pass an established
-connection as instance of L<Redis|Redis> class.
+Non-serialize-able fields (like status or message) passed in UTF-8 can not be
+correctly restored from Redis server. To avoid potential data corruction, passing
+UTF-8 encoded value causes error.
 
 =item *
 
@@ -599,11 +594,11 @@ passed to the C<new> constructor without additional C<timeout> argument.
 
 =back
 
-This example illustrates a C<new()> call with all possible arguments:
+This example illustrates C<new()> call with all possible arguments:
 
     my $jq = Redis::JobQueue->new(
         redis   => "$server:$port", # Connection info for Redis which hosts queue
-        timeout => $timeout,        # Default wait time (in seconds)
+        timeout => $timeout,        # wait time (in seconds)
                                     # for blocking call of get_next_job.
                                     # Set 0 for unlimited wait time
     );
@@ -1555,7 +1550,6 @@ sub _redis_constructor {
     try {
         $redis = Redis->new(
             server      => $self->_server,
-            encoding    => undef,
         );
     } catch {
         $self->_redis_exception( $_ );
@@ -1615,7 +1609,7 @@ sub _call_redis {
         } catch {
             $error = $_;
         };
-    } elsif ( $method eq 'HSET' && !$self->_redis->{encoding} && utf8::is_utf8( $_[2] ) ) {
+    } elsif ( $method eq 'HSET' && utf8::is_utf8( $_[2] ) ) {
         # In our case, the user sends data to the job queue and then gets it back.
         # Workload and result are fine with Unicode - they're properly serialized by Storable and stored as bytes in Redis;
         # Storable takes care about Unicode etc.
@@ -1638,7 +1632,7 @@ sub _call_redis {
         #
         # We choose (4) as it is consistent, does not degrade performance and does not cause subtle errors with damaged data.
 
-        # For non-serialized fields: UTF8 can not be transferred to the Redis server in mode of 'encoding => undef'
+        # For non-serialized fields: UTF8 can not be transferred to the Redis server
         confess $self->_error( E_MISMATCH_ARG )." (utf8 in $_[1])";
     } else {
         my @args = @_;

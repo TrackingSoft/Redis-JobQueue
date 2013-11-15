@@ -12,5 +12,9 @@ use English qw( -no_match_vars );
 
 eval 'use Test::Perl::Critic';  ## no critic
 plan skip_all => 'Test::Perl::Critic required to criticise code' if $@;
-Test::Perl::Critic->import( -profile => "perlcritic.rc" ) if -e "perlcritic.rc";
-all_critic_ok();
+Test::Perl::Critic->import( -profile => 'xt/author/.perlcritic.rc' );
+all_critic_ok(
+    'lib',
+    't',
+    'xt',
+);

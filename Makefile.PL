@@ -23,7 +23,7 @@ my %config = (
         'List::MoreUtils'       => 0.33,
         'Mouse'                 => 0.97,
         'Params::Util'          => 1.07,
-        'Redis'                 => 1.926,
+        'Redis'                 => 1.963,
         'Storable'              => 2.39,
         'Try::Tiny'             => 0.18,
         },
@@ -34,6 +34,26 @@ my %config = (
         'Test::NoWarnings'      => 1.04,
         'Test::RedisServer'     => 0.04,
         },
+    META_MERGE          => {
+        no_index                => {
+            directory               => [
+#                't',
+#                'inc',
+                'xt',
+                'ex',
+            ]
+        },
+        provides                => {
+            'Redis::JobQueue'       => {
+                file                    => 'lib/Redis/JobQueue.pm',
+                version                 => '1.08'
+            },
+            'Redis::JobQueue::Job'  => {
+                file                    => 'lib/Redis/JobQueue/Job.pm',
+                version                 => '1.07'
+            },
+        },
+    },
     ( $] >= 5.005 ?
         (
         ABSTRACT        => 'Redis::JobQueue simple job queue with Redis server capabilities.',
@@ -43,7 +63,7 @@ my %config = (
     dist        => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean       => { FILES => "Debian_CPANTS.txt Redis-*.tar.gz" },
     LICENSE     => 'perl',
-    NO_MYMETA   => 1,
+#    NO_MYMETA   => 1,
 );
 
 my @patterns = qw( t/*.t t/*/*.t );
@@ -58,5 +78,7 @@ if( $ENV{RELEASE_TESTS} ) {
     @patterns = qw( xt/release/*.t xt/release/*/*.t );
     $config{test}->{TESTS} .= ' '.join ' ', map { glob } @patterns;
 }
+
+mkdir 'inc' unless -d 'inc';
 
 ExtUtils::MakeMaker::WriteMakefile( %config );

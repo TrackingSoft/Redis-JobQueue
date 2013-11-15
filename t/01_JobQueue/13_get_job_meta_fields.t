@@ -60,11 +60,11 @@ my $redis_addr = DEFAULT_SERVER.":$redis_port";
 my @redis_params = ( $exists_real_redis ? () : ( redis => $redis_addr ) );
 
 my $skip_msg;
-$skip_msg = "Redis server is unavailable" unless ( !$@ and $real_redis and $real_redis->ping );
+$skip_msg = "Redis server is unavailable" unless ( !$@ && $real_redis && $real_redis->ping );
 
 SKIP: {
     diag $skip_msg if $skip_msg;
-    skip( "Redis server is unavailable", 1 ) unless ( !$@ and $real_redis and $real_redis->ping );
+    skip( "Redis server is unavailable", 1 ) unless ( !$@ && $real_redis && $real_redis->ping );
 
 $real_redis->quit;
 # Test::RedisServer does not use timeout = 0
@@ -132,7 +132,7 @@ ok $jq->_call_redis( 'EXISTS', $key ), 'data hash exists';
 ok $jq->delete_job( $added_job ), "job deleted";
 ok !$jq->_call_redis( 'EXISTS', $key ), 'data hash does not exists';
 
-# get_job_ids
+# getjob_ids
 is scalar( $jq->get_job_ids ), 0, 'no job';
 
 #-- get_job_meta_fields

@@ -63,11 +63,11 @@ if ( !$real_redis )
     }
 }
 my $skip_msg;
-$skip_msg = "Redis server is unavailable" unless ( !$@ and $real_redis and $real_redis->ping );
+$skip_msg = "Redis server is unavailable" unless ( !$@ && $real_redis && $real_redis->ping );
 
 SKIP: {
     diag $skip_msg if $skip_msg;
-    skip( "Redis server is unavailable", 1 ) unless ( !$@ and $real_redis and $real_redis->ping );
+    skip( "Redis server is unavailable", 1 ) unless ( !$@ && $real_redis && $real_redis->ping );
 $real_redis->quit;
 
 my ( $jq, $job, @jobs, $maxmemory, $vm, $policy );

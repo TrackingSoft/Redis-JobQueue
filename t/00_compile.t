@@ -23,11 +23,11 @@ BEGIN { use_ok 'Redis::JobQueue::Job', qw(
     ) }
 
 my $val;
-ok( defined( $val = DEFAULT_SERVER ),               "import OK: $val" );
-ok( defined( $val = DEFAULT_PORT ),                 "import OK: $val" );
-ok( defined( $val = DEFAULT_TIMEOUT ),              "import OK: $val" );
+ok( defined( $val = DEFAULT_SERVER() ),             "import OK: $val" );
+ok( defined( $val = DEFAULT_PORT() ),               "import OK: $val" );
+ok( defined( $val = DEFAULT_TIMEOUT() ),            "import OK: $val" );
 
-ok( defined( $val = STATUS_CREATED ),               "import OK: $val" );
-ok( defined( $val = STATUS_WORKING ),               "import OK: $val" );
-ok( defined( $val = STATUS_COMPLETED ),             "import OK: $val" );
-ok( defined( $val = STATUS_FAILED ),                "import OK: $val" );
+ok( defined( $val = STATUS_CREATED() ),             "import OK: $val" );
+ok( defined( $val = STATUS_WORKING() ),             "import OK: $val" );
+ok( defined( $val = STATUS_COMPLETED() ),           "import OK: $val" );
+ok( defined( $val = STATUS_FAILED() ),              "import OK: $val" );
