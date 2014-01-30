@@ -31,6 +31,7 @@ t/01_JobQueue/15_queue_status.t
 t/01_JobQueue/16_utf8.t
 xt/author/.perlcritic.rc
 xt/author/92_vars.t
+xt/author/93_versions.t
 xt/author/94_fixme.t
 xt/author/95_critic.t
 xt/author/96_PureASCII.t

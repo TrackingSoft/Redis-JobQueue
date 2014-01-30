@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+1.09 Fri Jan  10 2014
+    CHANGES:
+    - Added method Redis::JobQueue->get_next_job_id.
+
 1.08 Fri Nov  15 2013
     CHANGES:
     - Deleted argument 'encoding' from the Redis::JobQueue->new

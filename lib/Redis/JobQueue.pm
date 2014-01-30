@@ -6,7 +6,7 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 1.08
+This documentation refers to C<Redis::JobQueue> version 1.09
 
 =cut
 
@@ -18,7 +18,7 @@ use warnings;
 
 # ENVIRONMENT ------------------------------------------------------------------
 
-our $VERSION = '1.08';
+our $VERSION = '1.09';
 
 use Exporter qw(
     import
@@ -1125,6 +1125,7 @@ sub get_next_job {
     my %args        = ( @_ );
     my $queues      = $args{queue};
     my $blocking    = $args{blocking};
+    my $only_id     = $args{_only_id};
 
     $queues = [ $queues // () ]
         if !ref( $queues );
@@ -1140,16 +1141,17 @@ sub get_next_job {
     if ( @keys ) {
         @keys = shuffle( @keys );
 
+        my $full_id;
         if ( $blocking ) {
             # 'BLPOP' waiting time of a given $self->timeout parameter
             my @cmd = ( 'BLPOP', ( @keys ), $self->timeout );
             while (1) {
-                my ( undef, $full_id ) = $self->_call_redis( @cmd );
+                ( undef, $full_id ) = $self->_call_redis( @cmd );
                 # if the job is no longer
                 last unless $full_id;
 
-                my $job = $self->_get_next_job( $full_id );
-                return $job if $job;
+                my $ret = $self->_get_next_job( $full_id, $only_id );
+                return $ret if $ret;
             }
         } else {
             # 'LPOP' takes only one queue name at a time
@@ -1157,12 +1159,12 @@ sub get_next_job {
                 next unless $self->_call_redis( 'EXISTS', $key );
                 my @cmd = ( 'LPOP', $key );
                 while (1) {
-                    my $full_id = $self->_call_redis( @cmd );
+                    $full_id = $self->_call_redis( @cmd );
                     # if the job is no longer
                     last unless $full_id;
 
-                    my $job = $self->_get_next_job( $full_id );
-                    return $job if $job;
+                    my $ret = $self->_get_next_job( $full_id, $only_id );
+                    return $ret if $ret;
                 }
             }
         }
@@ -1171,17 +1173,34 @@ sub get_next_job {
     return;
 }
 
+=head3 C<get_next_job_id( queue =E<gt> $queue_name, $blocking =E<gt> 1 )>
+
+Like L</get_nex_job>, but returns job identifier only.
+
+TTL job data for the job does not reset on the Redis server.
+
+=cut
+sub get_next_job_id {
+    my $self        = shift;
+
+    return $self->get_next_job( @_, _only_id => 1 );
+}
+
 sub _get_next_job {
-    my ( $self, $full_id ) = @_;
+    my ( $self, $full_id, $only_id ) = @_;
 
     my ( $id, $expire_time ) = split ' ', $full_id;
     my $key = $self->_jkey( $id );
     if ( $self->_call_redis( 'EXISTS', $key ) ) {
-        my $job = $self->load_job( $id );
-        if ( my $expire = $job->expire ) {
-            $self->_call_redis( 'EXPIRE', $key, $expire );
+        if ( $only_id ) {
+            return $id;
+        } else {
+            my $job = $self->load_job( $id );
+            if ( my $expire = $job->expire ) {
+                $self->_call_redis( 'EXPIRE', $key, $expire );
+            }
+            return $job;
         }
-        return $job;
     } else {
         if ( !$expire_time || time < $expire_time ) {
             confess $id.' '.$self->_error( E_JOB_DELETED );

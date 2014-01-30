@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 27;
+use Test::More tests => 28;
 use Test::NoWarnings;
 
 BEGIN { use_ok 'Redis::JobQueue', qw(
@@ -29,6 +29,7 @@ can_ok( 'Redis::JobQueue', 'get_job_data' );
 can_ok( 'Redis::JobQueue', 'get_job_meta_fields' );
 can_ok( 'Redis::JobQueue', 'load_job' );
 can_ok( 'Redis::JobQueue', 'get_next_job' );
+can_ok( 'Redis::JobQueue', 'get_next_job_id' );
 can_ok( 'Redis::JobQueue', 'update_job' );
 can_ok( 'Redis::JobQueue', 'delete_job' );
 can_ok( 'Redis::JobQueue', 'get_job_ids' );

@@ -285,4 +285,38 @@ foreach my $queue ( ( @some_queues ) )
 
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 
+#-- get_next_job
+
+@some_queues = qw( q1 q2 q3 );
+@some_jobs   = qw( j1 j2 j3 );
+@expectation = ();
+foreach my $queue ( ( @some_queues ) )
+{
+    foreach my $job ( ( @some_jobs ) )
+    {
+        $pre_job->{queue}   = $queue;
+        $pre_job->{job}     = $job;
+        $new_job = $jq->add_job( $pre_job );
+        push @expectation, $new_job->id;
+    }
+}
+
+while ( my $job_id = $jq->get_next_job_id(
+    queue       => \@some_queues,
+    blocking    => 0,
+    ) )
+{
+    for ( my $i = 0; $i <= $#expectation; $i++ )
+    {
+        if ( $job_id eq $expectation[ $i ] )
+        {
+            pass "get_next_job_id OK ($job_id)";
+            splice @expectation, $i, 1;
+            last;
+        }
+    }
+}
+
+$jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
+
 };
