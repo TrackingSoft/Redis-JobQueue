@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+1.10 Thu Feb  20 2014
+    CHANGES:
+    - Small test improvement.
+
 1.09 Fri Jan  10 2014
     CHANGES:
     - Added method Redis::JobQueue->get_next_job_id.

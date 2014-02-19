@@ -26,10 +26,10 @@ no_index:
 provides:
   Redis::JobQueue:
     file: lib/Redis/JobQueue.pm
-    version: 1.09
+    version: 1.10
   Redis::JobQueue::Job:
     file: lib/Redis/JobQueue/Job.pm
-    version: 1.09
+    version: 1.10
 requires:
   Data::UUID: 1.217
   Digest::SHA1: 2.13
@@ -40,4 +40,4 @@ requires:
   Storable: 2.39
   Try::Tiny: 0.18
   perl: 5.010
-version: 1.09
+version: 1.10

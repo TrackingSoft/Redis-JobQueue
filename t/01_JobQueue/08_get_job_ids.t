@@ -42,7 +42,7 @@ use Redis::JobQueue::Job qw(
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
 
-my $server = "127.0.0.1";
+my $server = "127.5.5.5";   # for example
 #my $port = 6379;
 my $timeout = 1;
 
