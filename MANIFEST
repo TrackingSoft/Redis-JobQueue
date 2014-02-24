@@ -29,6 +29,7 @@ t/01_JobQueue/13_get_job_meta_fields.t
 t/01_JobQueue/14_get_job_data.t
 t/01_JobQueue/15_queue_status.t
 t/01_JobQueue/16_utf8.t
+t/tlib/Redis/JobQueue/Test/Utils.pm
 xt/author/.perlcritic.rc
 xt/author/92_vars.t
 xt/author/93_versions.t

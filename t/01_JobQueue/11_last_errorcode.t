@@ -4,7 +4,7 @@ use 5.010;
 use strict;
 use warnings;
 
-use lib 'lib';
+use lib 'lib', 't/tlib';
 
 use Test::More;
 plan "no_plan";
@@ -47,6 +47,10 @@ use Redis::JobQueue::Job qw(
     STATUS_FAILED
     );
 
+use Redis::JobQueue::Test::Utils qw(
+    get_redis
+);
+
 $| = 1;
 
 my $redis;
@@ -88,7 +92,7 @@ sub new_connect {
 #    isa_ok( $redis, 'Redis' );
 
     # For Test::RedisServer
-    $redis = Test::RedisServer->new( conf =>
+    $redis = get_redis( conf =>
         {
             port                => Net::EmptyPort::empty_port( 32637 ),
             maxmemory           => $maxmemory,

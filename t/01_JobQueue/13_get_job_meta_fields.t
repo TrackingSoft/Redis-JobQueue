@@ -4,7 +4,7 @@ use 5.010;
 use strict;
 use warnings;
 
-use lib 'lib';
+use lib 'lib', 't/tlib';
 
 use Test::More;
 plan "no_plan";
@@ -41,6 +41,10 @@ use Redis::JobQueue qw(
 use Redis::JobQueue::Job;
 use Storable;
 
+use Redis::JobQueue::Test::Utils qw(
+    get_redis
+);
+
 my $redis;
 my $real_redis;
 my $port = Net::EmptyPort::empty_port( 32637 ); # 32637-32766 Unassigned
@@ -68,7 +72,7 @@ SKIP: {
 
 $real_redis->quit;
 # Test::RedisServer does not use timeout = 0
-$redis = Test::RedisServer->new( conf => { port => Net::EmptyPort::empty_port( 32637 ) }, timeout => 3 ) unless $redis;
+$redis = get_redis( conf => { port => Net::EmptyPort::empty_port( 32637 ) }, timeout => 3 ) unless $redis;
 isa_ok( $redis, 'Test::RedisServer' );
 
 my $jq = Redis::JobQueue->new( @redis_params );

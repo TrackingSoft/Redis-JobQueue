@@ -28,11 +28,11 @@ my %config = (
         'Try::Tiny'             => 0.18,
         },
     BUILD_REQUIRES              => {
-        'Net::EmptyPort'        => 0,
         'Test::Deep'            => 0.109,
         'Test::Exception'       => 0.31,
         'Test::NoWarnings'      => 1.04,
         'Test::RedisServer'     => 0.04,
+        'Test::TCP'             => 2.02,
         },
     META_MERGE          => {
         no_index                => {

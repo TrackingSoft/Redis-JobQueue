@@ -3,11 +3,11 @@ abstract: 'Redis::JobQueue simple job queue with Redis server capabilities.'
 author:
   - 'TrackingSoft LLC <sgladkov@trackingsoft.com>'
 build_requires:
-  Net::EmptyPort: 0
   Test::Deep: 0.109
   Test::Exception: 0.31
   Test::NoWarnings: 1.04
   Test::RedisServer: 0.04
+  Test::TCP: 2.02
 configure_requires:
   ExtUtils::MakeMaker: 0
 dynamic_config: 1
