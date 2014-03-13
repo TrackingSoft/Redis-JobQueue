@@ -52,7 +52,7 @@ my $timeout = 1;
 
 my $redis;
 my $real_redis;
-my $port = Net::EmptyPort::empty_port( 32637 ); # 32637-32766 Unassigned
+my $port = Net::EmptyPort::empty_port( DEFAULT_PORT );
 
 #eval { $real_redis = Redis->new( server => "$server:$port" ) };
 eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT ) };
@@ -78,7 +78,7 @@ SKIP: {
 # For Test::RedisServer
 $real_redis->quit;
 $redis = get_redis( conf => {
-    port => Net::EmptyPort::empty_port( 32637 ),
+    port => Net::EmptyPort::empty_port( DEFAULT_PORT ),
     } );
 isa_ok( $redis, 'Test::RedisServer' );
 

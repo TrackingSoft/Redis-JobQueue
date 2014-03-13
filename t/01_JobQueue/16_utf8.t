@@ -51,7 +51,7 @@ use Redis::JobQueue::Job qw(
 
 my $redis_server;
 my $redis;
-my $port = Net::EmptyPort::empty_port( 32637 ); # 32637-32766 Unassigned
+my $port = Net::EmptyPort::empty_port( DEFAULT_PORT );
 my $exists_real_redis = 1;
 if ( !$redis ) {
     $exists_real_redis = 0;
