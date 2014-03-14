@@ -1,4 +1,4 @@
-Redis::JobQueue package version 1.10
+Redis::JobQueue package version 1.11
 ====================================
 
 The Redis::JobQueue package is a set of Perl modules which provides a

@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+1.11 Fri Mar  14 2014
+    CHANGES:
+    - Change the port used for testing.
+
 1.10 Thu Feb  20 2014
     CHANGES:
     - Small test improvement.
