@@ -1,5 +1,10 @@
 Revision history for Redis::JobQueue package
 
+1.12 Thu May  23 2014
+    CHANGES:
+    - Added argument 'check_maxmemory' to the Redis::JobQueue->new
+      (thanks to Danny Sterne).
+
 1.11 Fri Mar  14 2014
     CHANGES:
     - Change the port used for testing.

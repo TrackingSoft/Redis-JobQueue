@@ -76,6 +76,7 @@ my $pre_job = {
     result       => \'JOB result comes here, up to 512MB long',
     };
 
+my $maxmemory_mode;
 sub new_connect {
     # For real Redis:
 #    $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT );
@@ -95,11 +96,29 @@ sub new_connect {
 
     $jq = Redis::JobQueue->new(
         $redis,
+        defined( $maxmemory_mode ) ? ( check_maxmemory => $maxmemory_mode ) : (),
         );
     isa_ok( $jq, 'Redis::JobQueue');
 
     $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 }
+
+#-- maxmemory argument
+
+$maxmemory = 100;
+new_connect();
+is $jq->max_datasize, $maxmemory, 'max_datasize correct';
+
+$maxmemory = int( Redis::JobQueue::MAX_DATASIZE / 2 );
+$maxmemory_mode = 1;
+new_connect();
+is $jq->max_datasize, $maxmemory, 'max_datasize correct';
+$maxmemory_mode = 0;
+new_connect();
+is $jq->max_datasize, Redis::JobQueue::MAX_DATASIZE, 'max_datasize correct';
+undef $maxmemory_mode;
+
+#-- Testing max_datasize
 
 $maxmemory = 0;
 $vm = "no";

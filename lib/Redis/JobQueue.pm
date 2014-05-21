@@ -6,7 +6,7 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 1.11
+This documentation refers to C<Redis::JobQueue> version 1.12
 
 =cut
 
@@ -18,7 +18,7 @@ use warnings;
 
 # ENVIRONMENT ------------------------------------------------------------------
 
-our $VERSION = '1.11';
+our $VERSION = '1.12';
 
 use Exporter qw(
     import
@@ -562,12 +562,18 @@ END_GET_JOB_IDS
 
 =head2 CONSTRUCTOR
 
-=head3 C<new( redis =E<gt> $server, timeout =E<gt> $timeout )>
+=head3 C<new( redis =E<gt> $server, timeout =E<gt> $timeout, check_maxmemory =E<gt> $mode )>
 
 Creates a new C<Redis::JobQueue> object to communicate with Redis server.
 If invoked without any arguments, the constructor C<new> creates and returns
 a C<Redis::JobQueue> object that is configured with the default settings and uses
 local C<redis> server.
+
+Optional C<check_maxmemory> boolean argument (default is true)
+defines if attempt is made to find out maximum available memory from Redis.
+
+In some cases Redis implementation forbids such request,
+but setting <check_maxmemory> to false can be used as a workaround.
 
 =head3 Caveats related to connection with Redis server
 
@@ -657,11 +663,13 @@ sub BUILD {
 
     $self->_redis( $self->_redis_constructor )
         unless ( $self->_redis );
-    my ( undef, $max_datasize ) = $self->_call_redis( 'CONFIG', 'GET', 'maxmemory' );
-    defined( _NONNEGINT( $max_datasize ) )
-        or die $self->_error( E_NETWORK );
-    $self->max_datasize( min $max_datasize, $self->max_datasize )
-        if $max_datasize;
+    if ( $self->_check_maxmemory ) {
+        my ( undef, $max_datasize ) = $self->_call_redis( 'CONFIG', 'GET', 'maxmemory' );
+        defined( _NONNEGINT( $max_datasize ) )
+            or die $self->_error( E_NETWORK );
+        $self->max_datasize( min $max_datasize, $self->max_datasize )
+            if $max_datasize;
+    }
 
     my ( $major, $minor ) = $self->_redis->info->{redis_version} =~ /^(\d+)\.(\d+)/;
     if ( $major < 2 || $major == 2 && $minor <= 4 ) {
@@ -715,7 +723,7 @@ The C<max_datasize> attribute value is used in the L<constructor|/CONSTRUCTOR>
 and data entry job operations on the Redis server.
 
 The L<constructor|/CONSTRUCTOR> uses the smaller of the values of 512MB and
-C<maxmemory> limit from a C<redis.conf> file.
+C<maxmemory> limit from a F<redis.conf> file.
 
 =cut
 has 'max_datasize'      => (
@@ -771,6 +779,13 @@ has '_lua_scripts'          => (
     lazy        => 1,
     init_arg    => undef,
     builder     => sub { return {}; },
+);
+
+has '_check_maxmemory'            => (
+    is          => 'ro',
+    init_arg    => 'check_maxmemory',
+    isa         => 'Bool',
+    default     => 1,
 );
 
 #-- public methods -------------------------------------------------------------
@@ -2086,7 +2101,7 @@ store such string as part of L<workload|Redis::JobQueue::Job/workload> / L<resul
 
 Needs Redis server version 2.6 or higher as module uses Redis Lua scripting.
 
-The use of C<maxmemory-police all*> in the C<redis.conf> file could lead to
+The use of C<maxmemory-police all*> in the F<redis.conf> file could lead to
 a serious (but hard to detect) problem as Redis server may delete
 the job queue objects.
 
@@ -2095,7 +2110,7 @@ because full name of some Redis keys may not be known at the time of the call
 to Lua script (C<'EVAL'> or C<'EVALSHA'> command). Redis server may not be able
 to forward the request to the appropriate node in the cluster.
 
-We strongly recommend using of C<maxmemory> option in the C<redis.conf> file if
+We strongly recommend using of C<maxmemory> option in the F<redis.conf> file if
 the data set may be large.
 
 The C<Redis::JobQueue> package was written, tested, and found working on recent
