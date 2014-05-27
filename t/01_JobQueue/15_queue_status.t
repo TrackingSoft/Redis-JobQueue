@@ -42,38 +42,22 @@ use Redis::JobQueue::Job qw(
 
 use Redis::JobQueue::Test::Utils qw(
     get_redis
+    verify_redis
 );
 
-my $redis;
-my $real_redis;
-my $port = Net::EmptyPort::empty_port( DEFAULT_PORT );
-my $exists_real_redis = 1;
-#    eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT ) };
-if ( !$real_redis )
-{
-    $exists_real_redis = 0;
-    $redis = eval { Test::RedisServer->new( conf => { port => $port }, timeout => 3 ) };
-    if ( $redis )
-    {
-        eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".$port ) };
-    }
-}
-my $redis_port = $exists_real_redis ? DEFAULT_PORT : $port;
-my $redis_addr = DEFAULT_SERVER.":$redis_port";
-my @redis_params = ( $exists_real_redis ? () : ( redis => $redis_addr ) );
+my $redis_error = "Unable to create test Redis server";
+my ( $redis, $skip_msg, $port ) = verify_redis();
 
-my $skip_msg;
-$skip_msg = "Redis server is unavailable" unless ( !$@ && $real_redis && $real_redis->ping );
+my $redis_addr = DEFAULT_SERVER.":$port";
+my @redis_params = ( redis => $redis_addr );
 
 SKIP: {
     diag $skip_msg if $skip_msg;
-    skip( "Redis server is unavailable", 1 ) unless ( !$@ && $real_redis && $real_redis->ping );
+    skip( $skip_msg, 1 ) if $skip_msg;
 
-$real_redis->quit;
-#    $real_redis->flushall;
-#    $redis = $real_redis;
 # Test::RedisServer does not use timeout = 0
-$redis = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) }, timeout => 3 ) unless $redis;
+$redis = get_redis( $redis, conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) }, timeout => 3 ) unless $redis;
+skip( $redis_error, 1 ) unless $redis;
 isa_ok( $redis, 'Test::RedisServer' );
 
 #    my $jq = Redis::JobQueue->new();

@@ -63,12 +63,13 @@ if ( !$redis ) {
 
 my $skip_msg;
 $skip_msg = "Redis server is unavailable" unless ( !$@ && $redis && $redis->ping );
+my $redis_error = "Unable to create test Redis server";
 
 SKIP: {
     diag $skip_msg if $skip_msg;
     skip( "Redis server is unavailable", 1 ) unless ( !$@ && $redis && $redis->ping );
 
-$redis->quit;
+    $redis->quit;
 
 #-- just testing ---------------------------------------------------------------
 
@@ -79,10 +80,13 @@ $redis->quit;
 $redis = Redis->new(
     server      => DEFAULT_SERVER.":".$port,
 );
+skip( $redis_error, 1 ) unless $redis;
 isa_ok( $redis, 'Redis' );
 
 # default encoding
 ok !exists( $redis->{encoding} ), 'default encoding not exists';
+
+$redis->quit;
 
 #-- The behavior of the server itself
 # Do not depend on the current:
@@ -102,6 +106,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     $redis = Redis->new(
         server      => DEFAULT_SERVER.":".$port,
     );
+    skip( $redis_error, 1 ) unless $redis;
 
     lives_ok { $redis->set( utf8 => $file_euro ) } 'set utf8';
     ok !eq_deeply( $redis->get( 'utf8' ), $file_euro ), 'get not utf8';
@@ -109,6 +114,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     ok !eq_deeply( $redis->get( 'utf8' ), $euro ), 'get not utf8';
     ok $redis->set( bin => $file_bin ), 'set bin';
     is_deeply $redis->get( 'bin' ), $bin, 'get bin';
+
+    $redis->quit;
 }
 
 {
@@ -121,6 +128,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     $redis = Redis->new(
         server      => DEFAULT_SERVER.":".$port,
     );
+    skip( $redis_error, 1 ) unless $redis;
 
     lives_ok { $redis->set( utf8 => $file_euro ) } 'set utf8';
     ok !eq_deeply( $redis->get( 'utf8' ), $file_euro ), 'get not utf8';
@@ -128,6 +136,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     ok !eq_deeply( $redis->get( 'utf8' ), $euro ), 'get not utf8';
     ok $redis->set( bin => $file_bin ), 'set bin';
     is_deeply $redis->get( 'bin' ), $bin, 'get bin';
+
+    $redis->quit;
 }
 
 #-- The behavior of the Redis::JobQueue
@@ -145,6 +155,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
         my $pre_job = {
             queue       => 'lovely_queue',
             job         => 'strong_job',
@@ -166,6 +177,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             my $new_job = $jq->load_job( $added_job );
             is_deeply $new_job->status, $pre_job->{status}, 'correct loaded status';
         }
+
+        $redis->quit;
     }
 }
 
@@ -181,6 +194,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
         my $pre_job = {
             queue       => 'lovely_queue',
             job         => 'strong_job',
@@ -202,6 +216,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             my $new_job = $jq->load_job( $added_job );
             is_deeply $new_job->status, $pre_job->{status}, 'correct loaded status';
         }
+
+        $redis->quit;
     }
 }
 
@@ -218,6 +234,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
         my $pre_job = {
             queue       => 'lovely_queue',
             job         => 'strong_job',
@@ -239,6 +256,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         my $new_job = $jq->load_job( $added_job );
         is_deeply $new_job->result, $pre_job->{result}, 'correct loaded result';
         is_deeply $new_job->meta_data( 'foo' ), $pre_job->{meta_data}->{foo}, 'correct loaded foo';
+
+        $redis->quit;
     }
 }
 
@@ -254,6 +273,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
         my $pre_job = {
             queue       => 'lovely_queue',
             job         => 'strong_job',
@@ -275,6 +295,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         my $new_job = $jq->load_job( $added_job );
         is_deeply $new_job->result, $pre_job->{result}, 'correct loaded result';
         is_deeply $new_job->meta_data( 'foo' ), $pre_job->{meta_data}->{foo}, 'correct loaded foo';
+
+        $redis->quit;
     }
 }
 
@@ -293,6 +315,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
 
         # data is "protected"
         my $status = $data;
@@ -318,6 +341,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $new_status = $new_job->status;
         utf8::decode( $new_status );
         is_deeply $new_status, $data, 'correct loaded status';
+
+        $redis->quit;
     }
 }
 
@@ -335,6 +360,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
 
         # data is "protected"
 # The "problem" applies only to text fields 'status', 'message'
@@ -359,6 +385,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         my $new_job = $jq->load_job( $added_job );
         $new_status = $new_job->status;
         is_deeply( ( utf8::is_utf8( $new_status ) ? $new_status : Encode::decode_utf8( $new_job->status ) ), $data, 'correct loaded status' );
+
+        $redis->quit;
     }
 }
 
@@ -374,6 +402,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
 
         # data is "protected"
         my $status = $data;
@@ -399,6 +428,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $new_status = $new_job->status;
         utf8::decode( $new_status );
         is_deeply $new_status, $data, 'correct loaded status';
+
+        $redis->quit;
     }
 }
 
@@ -415,6 +446,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
 
         my $pre_job = {
             queue       => 'lovely_queue',
@@ -428,6 +460,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
 
         dies_ok { $added_job = $jq->add_job( $pre_job ) } 'an attempt set utf8';
         like $@, qr/Invalid argument \(utf8 in \w+\)/, 'correct exception';
+
+        $redis->quit;
     }
 }
 
@@ -443,6 +477,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
         $redis = Redis->new(
             server      => DEFAULT_SERVER.":".$port,
         );
+        skip( $redis_error, 1 ) unless $redis;
 
         my $pre_job = {
             queue       => 'lovely_queue',
@@ -456,6 +491,8 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
 
         dies_ok { $added_job = $jq->add_job( $pre_job ) } 'an attempt set utf8';
         like $@, qr/Invalid argument \(utf8 in \w+\)/, 'correct exception';
+
+        $redis->quit;
     }
 }
 

@@ -9,6 +9,7 @@ use Exporter qw(
 );
 our @EXPORT_OK  = qw(
     get_redis
+    verify_redis
 );
 
 use Net::EmptyPort;
@@ -16,11 +17,27 @@ use Test::More;
 use Test::RedisServer;
 use Try::Tiny;
 
+use Redis::JobQueue qw(
+    DEFAULT_SERVER
+    DEFAULT_PORT
+);
+
 sub get_redis
 {
+    my $redis = shift;
     my @args = @_;
 
-    my ( $redis, $error );
+    if ( $redis ) {
+        if ( ref( $redis ) eq 'Test::RedisServer' ) {
+            $redis->stop;
+        } elsif ( ref( $redis ) eq 'Redis' ) {
+            $redis->quit;
+        }
+        undef $redis;
+        sleep 1;
+    }
+
+    my $error;
     for ( 1..3 )
     {
         try
@@ -34,9 +51,32 @@ sub get_redis
         last unless $error;
         sleep 1;
     }
-    BAIL_OUT "failed to launch redis-server" if $error;
+    return if $error;
 
     return $redis;
+}
+
+sub verify_redis
+{
+    my $redis;
+    my $real_redis;
+    my $skip_msg;
+    my $port = Net::EmptyPort::empty_port( DEFAULT_PORT );
+
+    $redis = get_redis( $redis, conf => { port => $port }, timeout => 3 );
+    if ( $redis )
+    {
+        eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".$port ) };
+        $skip_msg = "Redis server is unavailable" unless ( !$@ && $real_redis && $real_redis->ping );
+        $skip_msg = "Need a Redis server version 2.6 or higher" if ( !$skip_msg && !eval { return $real_redis->eval( 'return 1', 0 ) } );
+        $real_redis->quit if $real_redis;
+    }
+    else
+    {
+        $skip_msg = "Unable to create test Redis server";
+    }
+
+    return $redis, $skip_msg, $port;
 }
 
 1;

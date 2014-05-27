@@ -40,50 +40,27 @@ use Redis::JobQueue::Job qw(
 
 use Redis::JobQueue::Test::Utils qw(
     get_redis
+    verify_redis
 );
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
 
 my $server = DEFAULT_SERVER;
-#my $port = 6379;
 my $timeout = 1;
 
-my $redis;
-my $real_redis;
-my $port = Net::EmptyPort::empty_port( DEFAULT_PORT );
+my $redis_error = "Unable to create test Redis server";
+my ( $redis, $skip_msg, $port ) = verify_redis();
 
-#eval { $real_redis = Redis->new( server => "$server:$port" ) };
-my $exists_real_redis = 1;
-eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT ) };
-if ( !$real_redis )
-{
-    $exists_real_redis = 0;
-    $redis = eval { Test::RedisServer->new( conf => { port => $port }, timeout => 3 ) };
-    if ( $redis )
-    {
-        eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".$port ) };
-    }
-}
-my $redis_port = $exists_real_redis ? DEFAULT_PORT : $port;
-my $redis_addr = "$server:$redis_port";
-my @redis_params = ( $exists_real_redis ? () : ( redis => $redis_addr ) );
-
-my $skip_msg;
-$skip_msg = "Redis server is unavailable" unless ( !$@ && $real_redis && $real_redis->ping );
+my $redis_addr = "$server:$port";
+my @redis_params = ( redis => $redis_addr );
 
 SKIP: {
     diag $skip_msg if $skip_msg;
-    skip( "Redis server is unavailable", 1 ) unless ( !$@ && $real_redis && $real_redis->ping );
+    skip( $skip_msg, 1 ) if $skip_msg;
 
-# For real Redis:
-#$redis = $real_redis;
-#isa_ok( $redis, 'Redis' );
-#$port = DEFAULT_PORT;
-
-# For Test::RedisServer
-$real_redis->quit;
 # Test::RedisServer does not use timeout = 0
-$redis = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) }, timeout => 3 ) unless $redis;
+$redis = get_redis( $redis, conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) }, timeout => 3 ) unless $redis;
+skip( $redis_error, 1 ) unless $redis;
 isa_ok( $redis, 'Test::RedisServer' );
 
 my ( $jq, $next_jq );
@@ -96,7 +73,7 @@ is $jq->timeout, DEFAULT_TIMEOUT, $msg;
 ok ref( $jq->_redis ) =~ /Redis/, $msg;
 
 $jq = Redis::JobQueue->new(
-    $exists_real_redis ? ( redis => $server ) : ( redis => $redis_addr ),
+    @redis_params,
     );
 isa_ok( $jq, 'Redis::JobQueue' );
 is $jq->_server, $redis_addr, $msg;

@@ -42,28 +42,15 @@ use Redis::JobQueue::Job qw(
 
 use Redis::JobQueue::Test::Utils qw(
     get_redis
+    verify_redis
 );
 
-my $redis;
-my $real_redis;
-my $port = Net::EmptyPort::empty_port( DEFAULT_PORT );
-
-eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT ) };
-if ( !$real_redis )
-{
-    $redis = eval { Test::RedisServer->new( conf => { port => $port }, timeout => 3 ) };
-    if ( $redis )
-    {
-        eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".$port ) };
-    }
-}
-my $skip_msg;
-$skip_msg = "Redis server is unavailable" unless ( !$@ && $real_redis && $real_redis->ping );
+my $redis_error = "Unable to create test Redis server";
+my ( $redis, $skip_msg, $port ) = verify_redis();
 
 SKIP: {
     diag $skip_msg if $skip_msg;
-    skip( "Redis server is unavailable", 1 ) unless ( !$@ && $real_redis && $real_redis->ping );
-$real_redis->quit;
+    skip( $skip_msg, 1 ) if $skip_msg;
 
 my ( $jq, $job, @jobs, $maxmemory, $vm, $policy );
 my $pre_job = {
@@ -78,13 +65,9 @@ my $pre_job = {
 
 my $maxmemory_mode;
 sub new_connect {
-    # For real Redis:
-#    $real_redis = Redis->new( server => DEFAULT_SERVER.":".DEFAULT_PORT );
-#    $redis = $real_redis;
-#    isa_ok( $redis, 'Redis' );
 
     # For Test::RedisServer
-    $redis = get_redis( conf =>
+    $redis = get_redis( $redis, conf =>
         {
             port                => Net::EmptyPort::empty_port( DEFAULT_PORT ),
             maxmemory           => $maxmemory,
@@ -92,6 +75,7 @@ sub new_connect {
             "maxmemory-policy"  => $policy,
             "maxmemory-samples" => 100,
         } );
+    skip( $redis_error, 1 ) unless $redis;
     isa_ok( $redis, 'Test::RedisServer' );
 
     $jq = Redis::JobQueue->new(
@@ -103,7 +87,7 @@ sub new_connect {
     $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 }
 
-#-- maxmemory argument
+#-- check_maxmemory argument
 
 $maxmemory = 100;
 new_connect();
