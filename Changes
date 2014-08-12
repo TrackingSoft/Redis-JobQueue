@@ -1,8 +1,15 @@
 Revision history for Redis::JobQueue package
 
+1.14 ??? Aug  ?? 2014
+    CHANGES:
+    - Time::HiRes::time is used for storing internal attributes.
+    - Redis::JobQueue->queue_status returns a floating seconds since the epoch
+      for the following information related to the queue:
+      max_job_age, min_job_age, lifetime.
+
 1.13 Tue May  27 2014
     CHANGES:
-    - Test improved.
+    - Re-factoring of tests.
 
 1.12 Thu May  23 2014
     CHANGES:

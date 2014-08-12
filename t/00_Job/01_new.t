@@ -6,7 +6,7 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 60;
+use Test::More tests => 56;
 use Test::NoWarnings;
 
 BEGIN {
@@ -133,7 +133,7 @@ foreach my $val ( ( \"scalar", [] ) )
 foreach my $field ( qw( created updated completed failed ) )
 {
     $tmp_pre_job = { %{$pre_job} };
-    foreach my $val ( ( -1, -3, "", "0.5", \"scalar", [], "something" ) )
+    foreach my $val ( ( -1, -3, "", \"scalar", [], "something" ) )
     {
         $tmp_pre_job->{ $field } = $val;
         dies_ok { my $job = Redis::JobQueue::Job->new(

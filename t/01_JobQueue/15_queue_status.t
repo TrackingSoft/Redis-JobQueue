@@ -98,7 +98,7 @@ foreach my $queue ( ( $pre_job->{queue}, $job ) )
     is $qstatus->{all_jobs}, 5, 'correct all_jobs';
     ok $qstatus->{lifetime}, 'lifetime present';
     ok $qstatus->{max_job_age}, 'max_job_age present';
-    ok $qstatus->{min_job_age}, 'min_job_age present';
+    ok exists( $qstatus->{min_job_age} ), 'min_job_age present';
 }
 
 $jq->delete_job( $job );

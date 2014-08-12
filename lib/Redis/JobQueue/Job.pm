@@ -45,6 +45,7 @@ use Params::Util qw(
     _HASH0
     _INSTANCE
 );
+use Time::HiRes qw();
 
 #-- declarations ---------------------------------------------------------------
 
@@ -168,6 +169,12 @@ subtype __PACKAGE__.'::NonNegInt',
     as 'Int',
     where { $_ >= 0 },
     message { ( $_ || '' ).' is not a non-negative integer!' },
+;
+
+subtype __PACKAGE__.'::NonNegNum',
+    as 'Num',
+    where { $_ >= 0 },
+    message { ( $_ || '' ).' is not a non-negative number!' },
 ;
 
 subtype __PACKAGE__.'::Progress',
@@ -371,8 +378,8 @@ has 'message'       => (
 
 =head3 C<created>
 
-Returns time (UTC) of job creation.
-Set to the current time (C<time>) when job is created.
+Returns time of job creation.
+Set to the current time (C<Time::HiRes::time>) when job is created.
 
 If necessary, alternative value can be set as:
 
@@ -380,9 +387,9 @@ If necessary, alternative value can be set as:
 
 =head3 C<updated>
 
-Returns the time (UTC) of the most recent modification of the job.
+Returns the time of the most recent modification of the job.
 
-Set to the current time (C<time>) when value(s) of any of the following data changes:
+Set to the current time (C<Time::HiRes::time>) when value(s) of any of the following data changes:
 L</status>, L</workload>, L</result>, L</progress>, L</message>, L</completed>, L</failed>.
 
 Can be updated manually:
@@ -393,16 +400,16 @@ Can be updated manually:
 for my $name ( qw( created updated ) ) {
     has $name           => (
         is          => 'rw',
-        isa         => __PACKAGE__.'::NonNegInt',
-        default     => sub { time },
+        isa         => __PACKAGE__.'::NonNegNum',
+        default     => sub { Time::HiRes::time },
         trigger     => sub { $_[0]->_modified_set( $name ) },
     );
 }
 
 =head3 C<started>
 
-Returns the time (UTC) that the job started processing.
-Set to the current time (C<time>) when the L</status> of the job is set to L</STATUS_WORKING>.
+Returns the time that the job started processing.
+Set to the current time (C<Time::HiRes::time>) when the L</status> of the job is set to L</STATUS_WORKING>.
 
 If necessary, you can set your own value, for example:
 
@@ -410,11 +417,11 @@ If necessary, you can set your own value, for example:
 
 =head3 C<completed>
 
-Returns the time (UTC) of the task completion.
+Returns the time of the task completion.
 
 It is set to 0 when task is created.
 
-Set to C<time> when L</status> is changed to L</STATUS_COMPLETED>.
+Set to C<Time::HiRes::time> when L</status> is changed to L</STATUS_COMPLETED>.
 
 Can be modified manually:
 
@@ -425,11 +432,11 @@ The attributes C<completed> and C<failed> are mutually exclusive.
 
 =head3 C<failed>
 
-Returns the time (UTC) of the task failure.
+Returns the time of the task failure.
 
 It is set to 0 when task is created.
 
-Set to C<time> when L</status> is changed to L</STATUS_FAILED>.
+Set to C<Time::HiRes::time> when L</status> is changed to L</STATUS_FAILED>.
 
 Can be modified manually:
 
@@ -442,7 +449,7 @@ The attributes C<failed> and C<completed> are mutually exclusive.
 for my $name ( qw( started completed failed ) ) {
     has $name           => (
         is          => 'rw',
-        isa         => __PACKAGE__.'::NonNegInt',
+        isa         => __PACKAGE__.'::NonNegNum',
         default     => 0,
         trigger     => sub { $_[0]->_modified_set( $name ) },
     );
@@ -477,7 +484,7 @@ has '__modified_meta_data'  => (
 
 =head3 C<elapsed>
 
-Returns the time (in seconds) since the job started processing (see L</started>)
+Returns the time (a floating seconds since the epoch) since the job started processing (see L</started>)
 till job L</completed> or L</failed> or to the current time.
 Returns C<undef> if the start processing time was set to 0.
 
@@ -486,7 +493,7 @@ sub elapsed {
     my ( $self ) = @_;
 
     if ( my $started = $self->started ) {
-        return( ( $self->completed || $self->failed || time ) - $started );
+        return( ( $self->completed || $self->failed || Time::HiRes::time ) - $started );
     } else {
         return( undef );
     }
@@ -557,7 +564,7 @@ sub meta_data {
     ++$self->__modified_meta_data->{ $key };
 
     # job data change
-    $self->updated( time );
+    $self->updated( Time::HiRes::time );
     ++$self->__modified->{ 'updated' };
 
     return;
@@ -631,16 +638,16 @@ sub _modified_set {
     my $field   = shift;
 
     if ( $field =~ /^(status|meta_data|workload|result|progress|message|started|completed|failed)$/ ) {
-        $self->updated( time );
+        $self->updated( Time::HiRes::time );
         ++$self->__modified->{ 'updated' };
     }
 
     if ( $field eq 'status' ) {
         my $new_status = shift;
-        if      ( $new_status eq STATUS_CREATED )   { $self->created( time ) }
-        elsif   ( $new_status eq STATUS_WORKING )   { $self->started( time ) unless $self->started }
-        elsif   ( $new_status eq STATUS_COMPLETED ) { $self->completed( time ) }
-        elsif   ( $new_status eq STATUS_FAILED )    { $self->failed( time ) }
+        if      ( $new_status eq STATUS_CREATED )   { $self->created( Time::HiRes::time ) }
+        elsif   ( $new_status eq STATUS_WORKING )   { $self->started( Time::HiRes::time ) unless $self->started }
+        elsif   ( $new_status eq STATUS_COMPLETED ) { $self->completed( Time::HiRes::time ) }
+        elsif   ( $new_status eq STATUS_FAILED )    { $self->failed( Time::HiRes::time ) }
     }
 
     ++$self->__modified->{ $field };

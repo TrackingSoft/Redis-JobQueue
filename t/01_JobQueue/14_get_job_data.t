@@ -29,7 +29,7 @@ use List::MoreUtils qw(
     firstidx
     );
 use Params::Util qw(
-    _NONNEGINT
+    _NUMBER
     _STRING
     );
 use Redis::JobQueue qw(
@@ -89,7 +89,7 @@ foreach my $field ( keys %$hash_data )
 {
     if ( $field =~ /^(created|updated)$/ )
     {
-        ok defined( _NONNEGINT( $hash_data->{ $field } ) ), "data OK: $field";
+        ok defined( _NUMBER( $hash_data->{ $field } ) ) && $hash_data->{ $field } > 0, "data OK: $field";
     }
     elsif ( $field =~ /^(started|completed|failed|progress)$/ )
     {
@@ -126,7 +126,7 @@ foreach my $field ( @job_fields )
     my ( $data ) = $jq->get_job_data( $job, $field );
     if ( $field =~ /^(created|updated)$/ )
     {
-        ok defined( _NONNEGINT( $hash_data->{ $field } ) ), "data OK: $field";
+        ok defined( _NUMBER( $hash_data->{ $field } ) ) && $hash_data->{ $field } > 0, "data OK: $field";
     }
     elsif ( $field =~ /^(started|completed|failed|progress)$/ )
     {
@@ -164,7 +164,7 @@ foreach my $idx ( 0..$#job_fields )
     my $field = $job_fields[ $idx ];
     if ( $field =~ /^(created|updated)$/ )
     {
-        ok defined( _NONNEGINT( $arr_data[ $idx ] ) ), "data OK: $field";
+        ok defined( _NUMBER( $arr_data[ $idx ] ) ) && $arr_data[ $idx ] > 0, "data OK: $field";
     }
     elsif ( $field =~ /^(started|completed|failed|progress)$/ )
     {
