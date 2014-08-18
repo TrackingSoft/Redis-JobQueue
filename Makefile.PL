@@ -27,7 +27,7 @@ my %config = (
         'Storable'              => 2.39,
         'Try::Tiny'             => 0.18,
         },
-    BUILD_REQUIRES              => {
+    TEST_REQUIRES               => {
         'Test::Deep'            => 0.109,
         'Test::Exception'       => 0.31,
         'Test::NoWarnings'      => 1.04,
