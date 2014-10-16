@@ -108,10 +108,18 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     );
     skip( $redis_error, 1 ) unless $redis;
 
-    lives_ok { $redis->set( utf8 => $file_euro ) } 'set utf8';
-    ok !eq_deeply( $redis->get( 'utf8' ), $file_euro ), 'get not utf8';
-    lives_ok { $redis->set( utf8 => $euro ) } 'set utf8';
-    ok !eq_deeply( $redis->get( 'utf8' ), $euro ), 'get not utf8';
+# According to Redis documentation:
+# There is no encoding feature anymore, it has been deprecated and finally removed.
+# This module consider that any data sent to the Redis server is a binary data.
+# And it doesn't do anything when getting data from the Redis server.
+# So, if you are working with character strings, you should pre-encode or post-decode it if needed !
+
+#    lives_ok { $redis->set( utf8 => $file_euro ) } 'set utf8';
+#    dies_ok { $redis->set( utf8 => $file_euro ) } 'not set utf8';
+#    ok !eq_deeply( $redis->get( 'utf8' ), $file_euro ), 'get not utf8';
+#    lives_ok { $redis->set( utf8 => $euro ) } 'set utf8';
+#    dies_ok { $redis->set( utf8 => $euro ) } 'not set utf8';
+#    ok !eq_deeply( $redis->get( 'utf8' ), $euro ), 'get not utf8';
     ok $redis->set( bin => $file_bin ), 'set bin';
     is_deeply $redis->get( 'bin' ), $bin, 'get bin';
 
@@ -130,10 +138,18 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     );
     skip( $redis_error, 1 ) unless $redis;
 
-    lives_ok { $redis->set( utf8 => $file_euro ) } 'set utf8';
-    ok !eq_deeply( $redis->get( 'utf8' ), $file_euro ), 'get not utf8';
-    lives_ok { $redis->set( utf8 => $euro ) } 'set utf8';
-    ok !eq_deeply( $redis->get( 'utf8' ), $euro ), 'get not utf8';
+# According to Redis documentation:
+# There is no encoding feature anymore, it has been deprecated and finally removed.
+# This module consider that any data sent to the Redis server is a binary data.
+# And it doesn't do anything when getting data from the Redis server.
+# So, if you are working with character strings, you should pre-encode or post-decode it if needed !
+
+#    lives_ok { $redis->set( utf8 => $file_euro ) } 'set utf8';
+#    dies_ok { $redis->set( utf8 => $file_euro ) } 'not set utf8';
+#    ok !eq_deeply( $redis->get( 'utf8' ), $file_euro ), 'get not utf8';
+#    lives_ok { $redis->set( utf8 => $euro ) } 'set utf8';
+#    dies_ok { $redis->set( utf8 => $euro ) } 'not set utf8';
+#    ok !eq_deeply( $redis->get( 'utf8' ), $euro ), 'get not utf8';
     ok $redis->set( bin => $file_bin ), 'set bin';
     is_deeply $redis->get( 'bin' ), $bin, 'get bin';
 

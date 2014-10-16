@@ -23,7 +23,7 @@ my %config = (
         'List::MoreUtils'       => 0.33,
         'Mouse'                 => 0.97,
         'Params::Util'          => 1.07,
-        'Redis'                 => 1.963,
+        'Redis'                 => 1.976,
         'Storable'              => 2.39,
         'Try::Tiny'             => 0.18,
         },

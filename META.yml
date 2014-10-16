@@ -3,11 +3,12 @@ abstract: 'Redis::JobQueue simple job queue with Redis server capabilities.'
 author:
   - 'TrackingSoft LLC <sgladkov@trackingsoft.com>'
 build_requires:
-  Test::Deep: 0.109
-  Test::Exception: 0.31
-  Test::NoWarnings: 1.04
-  Test::RedisServer: 0.04
-  Test::TCP: 2.02
+  ExtUtils::MakeMaker: '0'
+  Test::Deep: '0.109'
+  Test::Exception: '0.31'
+  Test::NoWarnings: '1.04'
+  Test::RedisServer: '0.04'
+  Test::TCP: '2.02'
 configure_requires:
   ExtUtils::MakeMaker: 0
 dynamic_config: 1
@@ -36,8 +37,17 @@ requires:
   List::MoreUtils: 0.33
   Mouse: 0.97
   Params::Util: 1.07
-  Redis: 1.963
+  Redis: 1.976
   Storable: 2.39
   Try::Tiny: 0.18
   perl: 5.010
 version: 1.13
+test_requires:
+  Test::Deep: 0.109
+  Test::Exception: 0.31
+  Test::NoWarnings: 1.04
+  Test::RedisServer: 0.04
+  Test::TCP: 2.02
+resources:
+  homepage: https://github.com/TrackingSoft/Redis-JobQueue
+  repository: git://github.com/TrackingSoft/Redis-JobQueue.git

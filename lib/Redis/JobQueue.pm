@@ -59,7 +59,7 @@ use Params::Util qw(
     _NONNEGINT
     _STRING
 );
-use Redis;
+use Redis '1.976';
 use Redis::JobQueue::Job qw(
     STATUS_CREATED
     STATUS_WORKING
@@ -1460,6 +1460,8 @@ The following example illustrates use of the C<quit> method:
 =cut
 sub quit {
     my ( $self ) = @_;
+
+    return if ${^GLOBAL_PHASE} eq 'DESTRUCT';
 
     $self->_error( E_NO_ERROR );
 

@@ -22,12 +22,12 @@
       ]
    },
    "prereqs" : {
-      "build" : {
+      "test" : {
          "requires" : {
             "Test::Deep" : "0.109",
             "Test::Exception" : "0.31",
             "Test::NoWarnings" : "1.04",
-            "Test::RedisServer" : "0.04"
+            "Test::RedisServer" : "0.04",
             "Test::TCP" : "2.02"
          }
       },
@@ -43,7 +43,7 @@
             "List::MoreUtils" : "0.33",
             "Mouse" : "0.97",
             "Params::Util" : "1.07",
-            "Redis" : "1.963",
+            "Redis" : "1.976",
             "Storable" : "2.39",
             "Try::Tiny" : "0.18",
             "perl" : "5.010"
@@ -61,5 +61,12 @@
       }
    },
    "release_status" : "stable",
-   "version" : "1.13"
+   "version" : "1.13",
+   "resources" : {
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/TrackingSoft/Redis-CappedCollection.git",
+         "web" : "http://github.com/TrackingSoft/Redis-CappedCollection"
+      }
+   }
 }
