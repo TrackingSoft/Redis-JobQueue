@@ -1,13 +1,13 @@
 Revision history for Redis::JobQueue package
 
-1.14 Tue Oct  28 2014
+1.15 Tue Oct  28 2014
     CHANGES:
     - Time::HiRes::time is used for storing internal attributes.
     - Redis::JobQueue->queue_status returns a floating seconds since the epoch
       for the following information related to the queue:
       max_job_age, min_job_age, lifetime.
-    - The Redis::JobQueue->quit method not ask the Redis server to close
-      the connection on global destruction phase.
+    - The Redis::JobQueue->quit method does not close connection to Redis during
+      global destruction phase (Perl version 5.14 and above).
     FIXES:
     - Fixed test 't/01_JobQueue/16_utf8.t'
 

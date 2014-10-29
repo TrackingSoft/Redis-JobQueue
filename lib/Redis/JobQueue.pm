@@ -6,7 +6,7 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 1.14
+This documentation refers to C<Redis::JobQueue> version 1.15
 
 =cut
 
@@ -18,7 +18,7 @@ use warnings;
 
 # ENVIRONMENT ------------------------------------------------------------------
 
-our $VERSION = '1.14';
+our $VERSION = '1.15';
 
 use Exporter qw(
     import
@@ -1461,7 +1461,7 @@ The following example illustrates use of the C<quit> method:
 sub quit {
     my ( $self ) = @_;
 
-    return if ${^GLOBAL_PHASE} eq 'DESTRUCT';
+    return if $] >= 5.14 && ${^GLOBAL_PHASE} eq 'DESTRUCT';
 
     $self->_error( E_NO_ERROR );
 
