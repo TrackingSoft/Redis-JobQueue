@@ -1079,7 +1079,7 @@ sub load_job {
     return $new_job;
 }
 
-=head3 C<get_next_job( queue =E<gt> $queue_name, $blocking =E<gt> 1 )>
+=head3 C<get_next_job( queue =E<gt> $queue_name, blocking =E<gt> 1 )>
 
 Selects the job identifier which is at the beginning of the queue.
 
@@ -1173,9 +1173,9 @@ sub get_next_job {
     return;
 }
 
-=head3 C<get_next_job_id( queue =E<gt> $queue_name, $blocking =E<gt> 1 )>
+=head3 C<get_next_job_id( queue =E<gt> $queue_name, blocking =E<gt> 1 )>
 
-Like L</get_nex_job>, but returns job identifier only.
+Like L</get_next_job>, but returns job identifier only.
 
 TTL job data for the job does not reset on the Redis server.
 
