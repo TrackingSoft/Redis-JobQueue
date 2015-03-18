@@ -12,7 +12,6 @@ use lib 'lib';
 
 use Test::More;
 plan "no_plan";
-use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";                 ## no critic
@@ -33,6 +32,8 @@ BEGIN {
     eval "use Net::EmptyPort";                  ## no critic
     plan skip_all => "because Net::EmptyPort required for testing" if $@;
 }
+
+use Test::NoWarnings;
 
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
