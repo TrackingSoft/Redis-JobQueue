@@ -7,12 +7,13 @@ use warnings;
 use lib 'lib';
 
 use Test::More tests => 56;
-use Test::NoWarnings;
 
 BEGIN {
     eval "use Test::Exception";     ## no critic
     plan skip_all => "because Test::Exception required for testing" if $@;
 }
+
+use Test::NoWarnings;
 
 use Redis::JobQueue::Job;
 

@@ -40,7 +40,6 @@ use Redis::JobQueue::Job qw(
     );
 
 use Redis::JobQueue::Test::Utils qw(
-    get_redis
     verify_redis
 );
 
@@ -60,8 +59,6 @@ SKIP: {
     skip( $skip_msg, 1 ) if $skip_msg;
 
 # Test::RedisServer does not use timeout = 0
-$redis = get_redis( $redis, conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) }, timeout => 3 ) unless $redis;
-skip( $redis_error, 1 ) unless $redis;
 isa_ok( $redis, 'Test::RedisServer' );
 
 my ( $jq, $next_jq );
@@ -71,7 +68,13 @@ $jq = Redis::JobQueue->new( @redis_params );
 isa_ok( $jq, 'Redis::JobQueue' );
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, DEFAULT_TIMEOUT, $msg;
-ok ref( $jq->_redis ) =~ /Redis/, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
+
+$jq = Redis::JobQueue->new( redis => { server => $redis_addr } );
+isa_ok( $jq, 'Redis::JobQueue' );
+is $jq->_server, $redis_addr, $msg;
+is $jq->timeout, DEFAULT_TIMEOUT, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
 
 $jq = Redis::JobQueue->new(
     @redis_params,
@@ -79,7 +82,7 @@ $jq = Redis::JobQueue->new(
 isa_ok( $jq, 'Redis::JobQueue' );
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, DEFAULT_TIMEOUT, $msg;
-ok ref( $jq->_redis ) =~ /Redis/, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
 
 $jq = Redis::JobQueue->new(
     timeout => $timeout,
@@ -88,7 +91,7 @@ $jq = Redis::JobQueue->new(
 isa_ok( $jq, 'Redis::JobQueue');
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, $timeout, $msg;
-ok ref( $jq->_redis ) =~ /Redis/, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
 
 $jq = Redis::JobQueue->new(
     redis   => $redis_addr,
@@ -97,7 +100,7 @@ $jq = Redis::JobQueue->new(
 isa_ok( $jq, 'Redis::JobQueue');
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, $timeout, $msg;
-ok ref( $jq->_redis ) =~ /Redis/, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
 
 $jq = Redis::JobQueue->new(
     @redis_params,
@@ -109,7 +112,7 @@ $next_jq = Redis::JobQueue->new(
 isa_ok( $next_jq, 'Redis::JobQueue');
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, DEFAULT_TIMEOUT, $msg;
-ok ref( $jq->_redis ) =~ /Redis/, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
 
 $jq = Redis::JobQueue->new(
     $jq,
@@ -118,7 +121,7 @@ $jq = Redis::JobQueue->new(
 isa_ok( $jq, 'Redis::JobQueue');
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, $timeout, $msg;
-ok ref( $jq->_redis ) =~ /Redis/, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
 
 $next_jq = Redis::JobQueue->new(
     $redis,
@@ -129,7 +132,7 @@ isa_ok( $next_jq, 'Redis::JobQueue');
 is $next_jq->_redis->{encoding}, undef, 'encoding not exists';
 is $next_jq->_server, $next_jq->_redis->{server}, $msg;
 is $next_jq->timeout, 3, $msg;
-ok ref( $jq->_redis ) =~ /Redis/, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
 
 $next_jq = Redis::JobQueue->new(
     $redis,
@@ -138,7 +141,7 @@ $next_jq = Redis::JobQueue->new(
 isa_ok( $next_jq, 'Redis::JobQueue');
 is $next_jq->_server, $next_jq->_redis->{server}, $msg;
 is $next_jq->timeout, $timeout, $msg;
-ok ref( $jq->_redis ) =~ /Redis/, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
 
 dies_ok { $jq = Redis::JobQueue->new(
     redis => $timeout,

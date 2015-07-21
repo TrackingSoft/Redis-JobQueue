@@ -21,7 +21,7 @@ my %config = (
         'Data::UUID'            => 1.217,
         'Digest::SHA1'          => 2.13,
         'List::MoreUtils'       => 0.33,
-        'Mouse'                 => 0.97,
+        'Mouse'                 => '2.4.1',
         'Params::Util'          => 1.07,
         'Redis'                 => 1.976,
         'Storable'              => 2.39,
@@ -32,7 +32,7 @@ my %config = (
         'Test::Exception'       => 0.31,
         'Test::NoWarnings'      => 1.04,
         'Test::RedisServer'     => 0.04,
-        'Test::TCP'             => 2.02,
+        'Test::TCP'             => 2.11,
         },
     META_MERGE          => {
         no_index                => {
@@ -46,11 +46,19 @@ my %config = (
         provides                => {
             'Redis::JobQueue'       => {
                 file                    => 'lib/Redis/JobQueue.pm',
-                version                 => '1.15'
+                version                 => '1.16'
             },
             'Redis::JobQueue::Job'  => {
                 file                    => 'lib/Redis/JobQueue/Job.pm',
-                version                 => '1.15'
+                version                 => '1.16'
+            },
+        },
+        'meta-spec'             => { version => 2 },
+        resources               => {
+            repository              => {
+                type                    => 'git',
+                url                     => 'git://github.com/TrackingSoft/Redis-JobQueue.git',
+                web                     => 'http://github.com/TrackingSoft/Redis-JobQueue',
             },
         },
     },

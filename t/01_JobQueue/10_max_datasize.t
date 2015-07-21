@@ -68,7 +68,7 @@ my $maxmemory_mode;
 sub new_connect {
 
     # For Test::RedisServer
-    $redis = get_redis( $redis, conf =>
+    $redis = get_redis( conf =>
         {
             port                => Net::EmptyPort::empty_port( DEFAULT_PORT ),
             maxmemory           => $maxmemory,
@@ -137,7 +137,7 @@ $jq->max_datasize( $prev_max_datasize );
 $jq->_call_redis( "DEL", $_ ) foreach $jq->_call_redis( "KEYS", "JobQueue:*" );
 
 ok $jq->_redis->ping, "server is available";
-$jq->quit;
+$jq->_redis->quit;
 ok !$jq->_redis->ping, "no server";
 
 };

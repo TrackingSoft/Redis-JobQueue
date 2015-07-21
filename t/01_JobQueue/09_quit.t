@@ -40,7 +40,6 @@ use Redis::JobQueue::Job qw(
     );
 
 use Redis::JobQueue::Test::Utils qw(
-    get_redis
     verify_redis
 );
 
@@ -56,10 +55,8 @@ SKIP: {
     skip( $skip_msg, 1 ) if $skip_msg;
 
 # For Test::RedisServer
-$port = Net::EmptyPort::empty_port( DEFAULT_PORT );
-$redis = get_redis( $redis, conf => { port => $port } );
-skip( $redis_error, 1 ) unless $redis;
 isa_ok( $redis, 'Test::RedisServer' );
+$port = $redis->conf->{port};
 
 my ( $jq, $job, @jobs );
 my $pre_job = {
@@ -73,7 +70,7 @@ my $pre_job = {
     };
 
 $jq = Redis::JobQueue->new(
-    $redis,
+    redis   => { server => DEFAULT_SERVER.':'.$port },
     timeout => $timeout,
     );
 isa_ok( $jq, 'Redis::JobQueue');
@@ -106,7 +103,7 @@ isa_ok( $jq, 'Redis::JobQueue');
 
 ok $jq->ping, "server is available";
 $jq->quit;
-ok !$jq->ping, "no server";
+ok $jq->ping, "server is available";
 
 };
 

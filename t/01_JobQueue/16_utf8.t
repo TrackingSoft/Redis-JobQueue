@@ -4,7 +4,8 @@ use 5.010;
 use strict;
 use warnings;
 
-use lib 'lib';
+#use lib 'lib';
+use lib 'lib', 't/tlib';
 
 # WARNING: global file scope
 #use utf8;
@@ -50,27 +51,23 @@ use Redis::JobQueue::Job qw(
     STATUS_FAILED
 );
 
-my $redis_server;
-my $redis;
-my $port = Net::EmptyPort::empty_port( DEFAULT_PORT );
-my $exists_real_redis = 1;
-if ( !$redis ) {
-    $exists_real_redis = 0;
-    $redis_server = eval { Test::RedisServer->new( conf => { port => $port }, timeout => 3 ) };
-    if ( $redis_server ) {
-        $redis = Redis->new( server => DEFAULT_SERVER.":".$port );
-    }
-}
+use Redis::JobQueue::Test::Utils qw(
+    get_redis
+    verify_redis
+);
 
-my $skip_msg;
-$skip_msg = "Redis server is unavailable" unless ( !$@ && $redis && $redis->ping );
 my $redis_error = "Unable to create test Redis server";
+my ( $redis_server, $skip_msg, $port ) = verify_redis();
+
+my $redis_addr = DEFAULT_SERVER.":$port";
 
 SKIP: {
     diag $skip_msg if $skip_msg;
-    skip( "Redis server is unavailable", 1 ) unless ( !$@ && $redis && $redis->ping );
+    skip( $skip_msg, 1 ) if $skip_msg;
 
-    $redis->quit;
+    my $redis = Redis->new( $redis_server->connect_info );
+    lives_ok { $redis->quit } 'An object accept commands';
+
 
 #-- just testing ---------------------------------------------------------------
 
@@ -78,11 +75,10 @@ SKIP: {
 
 #-- Controlling server connection
 
-$redis = Redis->new(
-    server      => DEFAULT_SERVER.":".$port,
-);
-skip( $redis_error, 1 ) unless $redis;
-isa_ok( $redis, 'Redis' );
+$redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+skip( $redis_error, 1 ) unless $redis_server;
+isa_ok( $redis_server, 'Test::RedisServer' );
+$redis = Redis->new( $redis_server->connect_info );
 
 # default encoding
 ok !exists( $redis->{encoding} ), 'default encoding not exists';
@@ -104,10 +100,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     my $euro    = "\x{20ac}";
     my $bin     = "\x61\xE2\x98\xBA\x62";
 
-    $redis = Redis->new(
-        server      => DEFAULT_SERVER.":".$port,
-    );
-    skip( $redis_error, 1 ) unless $redis;
+    $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+    skip( $redis_error, 1 ) unless $redis_server;
+    $redis = Redis->new( $redis_server->connect_info );
 
 # According to Redis documentation:
 # There is no encoding feature anymore, it has been deprecated and finally removed.
@@ -134,10 +129,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     my $euro    = "\x{20ac}";
     my $bin     = "\x61\xE2\x98\xBA\x62";
 
-    $redis = Redis->new(
-        server      => DEFAULT_SERVER.":".$port,
-    );
-    skip( $redis_error, 1 ) unless $redis;
+    $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+    skip( $redis_error, 1 ) unless $redis_server;
+    $redis = Redis->new( $redis_server->connect_info );
 
 # According to Redis documentation:
 # There is no encoding feature anymore, it has been deprecated and finally removed.
@@ -169,10 +163,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
         my $pre_job = {
             queue       => 'lovely_queue',
             job         => 'strong_job',
@@ -208,10 +201,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
         my $pre_job = {
             queue       => 'lovely_queue',
             job         => 'strong_job',
@@ -248,10 +240,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
         my $pre_job = {
             queue       => 'lovely_queue',
             job         => 'strong_job',
@@ -287,10 +278,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
         my $pre_job = {
             queue       => 'lovely_queue',
             job         => 'strong_job',
@@ -329,10 +319,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
 
         # data is "protected"
         my $status = $data;
@@ -374,10 +363,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
 
         # data is "protected"
 # The "problem" applies only to text fields 'status', 'message'
@@ -416,10 +404,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
 
         # data is "protected"
         my $status = $data;
@@ -460,10 +447,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             [ message   => $file_euro ],
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        $redis = Redis->new( $redis_server->connect_info );
+        skip( $redis_error, 1 ) unless $redis_server;
 
         my $pre_job = {
             queue       => 'lovely_queue',
@@ -491,10 +477,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             [ message   => $file_euro ],
         ) ) {
 
-        $redis = Redis->new(
-            server      => DEFAULT_SERVER.":".$port,
-        );
-        skip( $redis_error, 1 ) unless $redis;
+        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
 
         my $pre_job = {
             queue       => 'lovely_queue',

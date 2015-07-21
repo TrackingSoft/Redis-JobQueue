@@ -13,14 +13,16 @@ BEGIN { use_ok 'Redis::JobQueue', qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
-    ) }
+    )
+}
 
 BEGIN { use_ok 'Redis::JobQueue::Job', qw(
     STATUS_CREATED
     STATUS_WORKING
     STATUS_COMPLETED
     STATUS_FAILED
-    ) }
+    )
+}
 
 my $val;
 ok( defined( $val = DEFAULT_SERVER() ),             "import OK: $val" );

@@ -43,7 +43,6 @@ use Redis::JobQueue::Job;
 use Storable;
 
 use Redis::JobQueue::Test::Utils qw(
-    get_redis
     verify_redis
 );
 
@@ -58,8 +57,6 @@ SKIP: {
     skip( $skip_msg, 1 ) if $skip_msg;
 
 # Test::RedisServer does not use timeout = 0
-$redis = get_redis( $redis, conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) }, timeout => 3 ) unless $redis;
-skip( $redis_error, 1 ) unless $redis;
 isa_ok( $redis, 'Test::RedisServer' );
 
 my $jq = Redis::JobQueue->new( @redis_params );

@@ -24,20 +24,9 @@ use Redis::JobQueue qw(
 
 sub get_redis
 {
-    my $redis = shift;
     my @args = @_;
 
-    if ( $redis ) {
-        if ( ref( $redis ) eq 'Test::RedisServer' ) {
-            $redis->stop;
-        } elsif ( ref( $redis ) eq 'Redis' ) {
-            $redis->quit;
-        }
-        undef $redis;
-        sleep 1;
-    }
-
-    my $error;
+    my ( $redis, $error );
     for ( 1..3 )
     {
         try
@@ -53,7 +42,7 @@ sub get_redis
     }
     return if $error;
 
-    return $redis;
+    return wantarray ? ( $redis, $error ) : $redis;
 }
 
 sub verify_redis
@@ -63,7 +52,7 @@ sub verify_redis
     my $skip_msg;
     my $port = Net::EmptyPort::empty_port( DEFAULT_PORT );
 
-    $redis = get_redis( $redis, conf => { port => $port }, timeout => 3 );
+    $redis = get_redis( conf => { port => $port }, timeout => 3 );
     if ( $redis )
     {
         eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".$port ) };

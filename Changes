@@ -1,5 +1,12 @@
 Revision history for Redis::JobQueue package
 
+1.16 ??? ???  ?? 2015
+    CHANGES:
+    - In the parameters of the constructor 'redis' may be either a Redis object
+      or a server string or a hash reference of parameters to create a Redis object.
+    - Redis::JobQueue does not close connection to redis server (including '->quit' method)
+      if it was provided by user.
+
 1.15 Tue Oct  28 2014
     CHANGES:
     - Time::HiRes::time is used for storing internal attributes.

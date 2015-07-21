@@ -6,7 +6,7 @@ Redis::JobQueue - Job queue management implemented using Redis server.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue> version 1.15
+This documentation refers to C<Redis::JobQueue> version 1.16
 
 =cut
 
@@ -18,7 +18,7 @@ use warnings;
 
 # ENVIRONMENT ------------------------------------------------------------------
 
-our $VERSION = '1.15';
+our $VERSION = '1.16';
 
 use Exporter qw(
     import
@@ -569,6 +569,9 @@ If invoked without any arguments, the constructor C<new> creates and returns
 a C<Redis::JobQueue> object that is configured with the default settings and uses
 local C<redis> server.
 
+In the parameters of the constructor 'redis' may be either a Redis object
+or a server string or a hash reference of parameters to create a Redis object.
+
 Optional C<check_maxmemory> boolean argument (default is true)
 defines if attempt is made to find out maximum available memory from Redis.
 
@@ -608,13 +611,20 @@ This example illustrates C<new()> call with all possible arguments:
                                     # for blocking call of get_next_job.
                                     # Set 0 for unlimited wait time
     );
+    # or
+    my $jq = Redis::JobQueue->new(
+        redis => {                  # The hash reference of parameters
+                                    # to create a Redis object
+            server => "$server:$port",
+        },
+    );
 
 The following examples illustrate other uses of the C<new> method:
 
     $jq = Redis::JobQueue->new();
     my $next_jq = Redis::JobQueue->new( $jq );
 
-    my $redis = Redis->new( redis => "$server:$port" );
+    my $redis = Redis->new( server => "$server:$port" );
     $next_jq = Redis::JobQueue->new(
         $redis,
         timeout => $timeout,
@@ -640,9 +650,12 @@ around BUILDARGS => sub {
     } elsif ( _INSTANCE( $_[0], 'Test::RedisServer' ) ) {
         # to test only
         my $redis = shift;
+        # have to look into the Test::RedisServer object ...
+        my $conf = $redis->conf;
+        $conf->{server} = '127.0.0.1:'.$conf->{port} unless exists $conf->{server};
         return $class->$orig(
-            # have to look into the Test::RedisServer object ...
-            redis   => '127.0.0.1:'.$redis->conf->{port},
+            redis   => $conf->{server},
+            _redis  => Redis->new( %$conf ),
             @_
         );
     } elsif ( _INSTANCE( $_[0], __PACKAGE__ ) ) {
@@ -654,7 +667,20 @@ around BUILDARGS => sub {
             @_
         );
     } else {
-        return $class->$orig( @_ );
+        my %args = @_;
+        $args{_use_external_connection} = 0;
+        if ( ref( $args{redis} ) eq 'HASH' ) {
+            my $conf = $args{redis};
+            $conf->{server} = DEFAULT_SERVER.':'.DEFAULT_PORT unless exists $conf->{server};
+            delete $args{redis};
+            return $class->$orig(
+                redis   => $conf->{server},
+                _redis  => Redis->new( %$conf ),
+                %args,
+            );
+        } else {
+            return $class->$orig( %args );
+        }
     }
 };
 
@@ -762,8 +788,7 @@ has '_server'           => (
 
 has '_redis'            => (
     is          => 'rw',
-    # 'Maybe[Test::RedisServer]' to test only
-    isa         => 'Maybe[Redis] | Maybe[Test::RedisServer]',
+    isa         => 'Maybe[Redis]',
     default     => undef,
 );
 
@@ -784,6 +809,12 @@ has '_lua_scripts'          => (
 has '_check_maxmemory'            => (
     is          => 'ro',
     init_arg    => 'check_maxmemory',
+    isa         => 'Bool',
+    default     => 1,
+);
+
+has '_use_external_connection'     => (
+    is          => 'rw',
     isa         => 'Bool',
     default     => 1,
 );
@@ -1433,6 +1464,16 @@ The following example illustrates use of the C<ping> method:
 
     $is_alive = $jq->ping;
 
+External connections to the server object (eg, C <$redis = Redis->new( ... );>),
+and the queue object can continue to work after calling ping only if the method returned 1.
+
+If there is no connection to the Redis server (methods return 0), the connection to the server closes.
+In this case, to continue working with the queue,
+you must re-create the C<Redis::JobQueue> object with the L</new> method.
+When using an external connection to the server,
+to check the connection to the server you can use the C<$redis->echo( ... )> call.
+This is useful to avoid closing the connection to the Redis server unintentionally.
+
 =cut
 sub ping {
     my ( $self ) = @_;
@@ -1457,6 +1498,11 @@ The following example illustrates use of the C<quit> method:
 
     $jq->quit;
 
+It does not close the connection to the Redis server if it is an external connection provided
+to queue constructor as existing L<Redis> object.
+When using an external connection (eg, C<$redis = Redis-> new (...);>),
+to close the connection to the Redis server, call C<$redis->quit> after calling this method.
+
 =cut
 sub quit {
     my ( $self ) = @_;
@@ -1465,11 +1511,13 @@ sub quit {
 
     $self->_error( E_NO_ERROR );
 
-    try {
-        $self->_redis->quit;
-    } catch {
-        $self->_redis_exception( $_ );
-    };
+    unless ( $self->_use_external_connection ) {
+        try {
+            $self->_redis->quit;
+        } catch {
+            $self->_redis_exception( $_ );
+        };
+    }
 
     return;
 }

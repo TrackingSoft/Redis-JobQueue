@@ -41,7 +41,6 @@ use Redis::JobQueue::Job qw(
     );
 
 use Redis::JobQueue::Test::Utils qw(
-    get_redis
     verify_redis
 );
 
@@ -57,8 +56,6 @@ SKIP: {
     skip( $skip_msg, 1 ) if $skip_msg;
 
 # For Test::RedisServer
-$redis = get_redis( $redis, conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
-skip( $redis_error, 1 ) unless $redis;
 isa_ok( $redis, 'Test::RedisServer' );
 
 my ( $jq, $job );
