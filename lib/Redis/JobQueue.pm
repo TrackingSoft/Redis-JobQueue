@@ -629,6 +629,11 @@ The following examples illustrate other uses of the C<new> method:
         $redis,
         timeout => $timeout,
     );
+    # or
+    $next_jq = Redis::JobQueue->new(
+        redis   => $redis,
+        timeout => $timeout,
+    );
 
 An invalid argument causes die (C<confess>).
 
@@ -668,9 +673,21 @@ around BUILDARGS => sub {
         );
     } else {
         my %args = @_;
-        $args{_use_external_connection} = 0;
-        if ( ref( $args{redis} ) eq 'HASH' ) {
-            my $conf = $args{redis};
+        my $redis = $args{redis};
+        if ( _INSTANCE( $redis, 'Redis' ) ) {
+            delete $args{redis};
+            return $class->$orig(
+                # have to look into the Redis object ...
+                redis   => $redis->{server},
+                # it is impossible to know from Redis now ...
+                #timeout => $redis->???,
+                _redis  => $redis,
+                %args,
+            );
+        }
+        elsif ( ref( $redis ) eq 'HASH' ) {
+            $args{_use_external_connection} = 0;
+            my $conf = $redis;
             $conf->{server} = DEFAULT_SERVER.':'.DEFAULT_PORT unless exists $conf->{server};
             delete $args{redis};
             return $class->$orig(

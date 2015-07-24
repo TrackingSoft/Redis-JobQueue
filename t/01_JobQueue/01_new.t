@@ -70,6 +70,12 @@ is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, DEFAULT_TIMEOUT, $msg;
 ok ref( $jq->_redis ) eq 'Redis', $msg;
 
+$jq = Redis::JobQueue->new( redis => Redis->new( server => $redis_addr ) );
+isa_ok( $jq, 'Redis::JobQueue' );
+is $jq->_server, $redis_addr, $msg;
+is $jq->timeout, DEFAULT_TIMEOUT, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
+
 $jq = Redis::JobQueue->new( redis => { server => $redis_addr } );
 isa_ok( $jq, 'Redis::JobQueue' );
 is $jq->_server, $redis_addr, $msg;
