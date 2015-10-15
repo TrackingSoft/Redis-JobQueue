@@ -71,12 +71,14 @@ SKIP: {
 
 #-- just testing ---------------------------------------------------------------
 
+my $err_msg;
+
 # WARNING: In a test mode 'encoding' of the object '$redis' during writing and reading the same
 
 #-- Controlling server connection
 
-$redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
-skip( $redis_error, 1 ) unless $redis_server;
+( $redis_server, $err_msg ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+skip( $err_msg, 1 ) unless $redis_server;
 isa_ok( $redis_server, 'Test::RedisServer' );
 $redis = Redis->new( $redis_server->connect_info );
 
@@ -100,7 +102,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     my $euro    = "\x{20ac}";
     my $bin     = "\x61\xE2\x98\xBA\x62";
 
-    $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+    ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
     skip( $redis_error, 1 ) unless $redis_server;
     $redis = Redis->new( $redis_server->connect_info );
 
@@ -129,7 +131,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
     my $euro    = "\x{20ac}";
     my $bin     = "\x61\xE2\x98\xBA\x62";
 
-    $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+    ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
     skip( $redis_error, 1 ) unless $redis_server;
     $redis = Redis->new( $redis_server->connect_info );
 
@@ -163,7 +165,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
         $redis = Redis->new( $redis_server->connect_info );
         my $pre_job = {
@@ -201,7 +203,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
         $redis = Redis->new( $redis_server->connect_info );
         my $pre_job = {
@@ -240,7 +242,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
         $redis = Redis->new( $redis_server->connect_info );
         my $pre_job = {
@@ -278,7 +280,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
         $redis = Redis->new( $redis_server->connect_info );
         my $pre_job = {
@@ -319,7 +321,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
         $redis = Redis->new( $redis_server->connect_info );
 
@@ -363,7 +365,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
         $redis = Redis->new( $redis_server->connect_info );
 
@@ -404,7 +406,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             $file_bin,
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
         $redis = Redis->new( $redis_server->connect_info );
 
@@ -447,9 +449,9 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             [ message   => $file_euro ],
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
-        $redis = Redis->new( $redis_server->connect_info );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
+        $redis = Redis->new( $redis_server->connect_info );
 
         my $pre_job = {
             queue       => 'lovely_queue',
@@ -477,7 +479,7 @@ my $file_bin        = "\x61\xE2\x98\xBA\x62";
             [ message   => $file_euro ],
         ) ) {
 
-        $redis_server = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
+        ( $redis_server, $redis_error ) = get_redis( conf => { port => Net::EmptyPort::empty_port( DEFAULT_PORT ) } );
         skip( $redis_error, 1 ) unless $redis_server;
         $redis = Redis->new( $redis_server->connect_info );
 

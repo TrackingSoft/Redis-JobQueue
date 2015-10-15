@@ -40,7 +40,6 @@ sub get_redis
         last unless $error;
         sleep 1;
     }
-    return if $error;
 
     return wantarray ? ( $redis, $error ) : $redis;
 }
