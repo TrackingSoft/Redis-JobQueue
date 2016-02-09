@@ -1,5 +1,3 @@
-#!/usr/bin/perl -w
-
 use 5.010;
 use strict;
 use warnings;
@@ -21,7 +19,7 @@ my %config = (
         'Data::UUID'            => 1.217,
         'Digest::SHA1'          => 2.13,
         'List::MoreUtils'       => 0.33,
-        'Mouse'                 => '2.4.1',
+        'Mouse'                 => 0,
         'Params::Util'          => 1.07,
         'Redis'                 => 1.976,
         'Storable'              => 2.39,
