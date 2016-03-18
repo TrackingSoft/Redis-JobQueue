@@ -31,6 +31,9 @@ provides:
   Redis::JobQueue::Job:
     file: lib/Redis/JobQueue/Job.pm
     version: 1.16
+  Redis::JobQueue::Util:
+    file: lib/Redis/JobQueue/Util.pm
+    version: 1.16
 requires:
   Data::UUID: 1.217
   Digest::SHA1: 2.13

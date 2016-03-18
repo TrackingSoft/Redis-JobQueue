@@ -676,6 +676,8 @@ executing jobs queues, as well as monitoring the status and results of jobs.
 L<Redis::JobQueue::Job|Redis::JobQueue::Job> - Object interface for creating
 and manipulating jobs.
 
+L<Redis::JobQueue::Util|Redis::JobQueue::Util> - String manipulation utilities.
+
 L<Redis|Redis> - Perl binding for Redis database.
 
 =head1 SOURCE CODE

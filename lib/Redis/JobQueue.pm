@@ -66,6 +66,9 @@ use Redis::JobQueue::Job qw(
     STATUS_COMPLETED
     STATUS_FAILED
 );
+use Redis::JobQueue::Util qw(
+    format_message
+);
 use Storable qw(
     nfreeze
     thaw
@@ -1266,7 +1269,7 @@ sub _get_next_job {
         }
     } else {
         if ( !$expire_time || time < $expire_time ) {
-            confess $id.' '.$self->_error( E_JOB_DELETED );
+            confess format_message( '%s %s', $id, $self->_error( E_JOB_DELETED ) );
         }
         # If the queue contains a job identifier that has already been removed due
         # to expiration, the cycle will ensure the transition
@@ -1428,7 +1431,7 @@ The following examples illustrate uses of the C<get_job_ids> method:
 sub get_job_ids {
     my $self        = shift;
 
-    confess $self->_error( E_MISMATCH_ARG ).' (Odd number of elements in hash assignment)'
+    confess format_message( '%s (Odd number of elements in hash assignment)', $self->_error( E_MISMATCH_ARG ) )
         if ( scalar( @_ ) % 2 );
 
     my %args = @_;
@@ -1697,7 +1700,7 @@ sub _call_redis {
                 $self->_transaction( 0 );
             }
             # 'die' as maybe too long to analyze the data output from the 'confess'
-            die $self->_error( E_DATA_TOO_LARGE ).': '.$_[1];
+            die format_message( '%s: %s', $self->_error( E_DATA_TOO_LARGE ), $_[1] );
         }
 
         my ( $key, $field ) = @_;
@@ -1734,7 +1737,7 @@ sub _call_redis {
         # We choose (4) as it is consistent, does not degrade performance and does not cause subtle errors with damaged data.
 
         # For non-serialized fields: UTF8 can not be transferred to the Redis server
-        confess $self->_error( E_MISMATCH_ARG )." (utf8 in $_[1])";
+        confess format_message( '%s (utf8 in %s)', $self->_error( E_MISMATCH_ARG ), $_[1] );
     } else {
         my @args = @_;
         try {
@@ -2202,6 +2205,8 @@ executing jobs queues, as well as monitoring the status and results of jobs.
 
 L<Redis::JobQueue::Job|Redis::JobQueue::Job> - Object interface for creating
 and manipulating jobs.
+
+L<Redis::JobQueue::Util|Redis::JobQueue::Util> - String manipulation utilities.
 
 L<Redis|Redis> - Perl binding for Redis database.
 

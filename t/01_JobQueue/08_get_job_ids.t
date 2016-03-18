@@ -40,6 +40,9 @@ use Redis::JobQueue::Job qw(
     STATUS_COMPLETED
     STATUS_FAILED
     );
+use Redis::JobQueue::Util qw(
+    format_message
+);
 
 use Redis::JobQueue::Test::Utils qw(
     get_redis
@@ -168,13 +171,13 @@ dies_ok { $jq->get_job_ids( 'something' ) } 'expecting to die (Odd number of ele
 
 foreach my $arg ( ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] ) )
 {
-    dies_ok { $jq->get_job_ids( $arg ) } 'expecting to die ('.( $arg // '<undef>' ).')';
+    dies_ok { $jq->get_job_ids( $arg ) } format_message( 'expecting to die (%s)', $arg );
 }
 
 foreach my $val ( ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] ) )
 {
     # keywords are different from 'queue', 'status' are ignored
-    lives_ok { $jq->get_job_ids( anything => $val ) } 'expecting to die ('.( $val // '<undef>' ).')';
+    lives_ok { $jq->get_job_ids( anything => $val ) } format_message( 'expecting to die (%s)', $val );
 }
 
 };

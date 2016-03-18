@@ -16,6 +16,9 @@ BEGIN {
 use Test::NoWarnings;
 
 use Redis::JobQueue::Job;
+use Redis::JobQueue::Util qw(
+    format_message
+);
 
 # options for testing arguments: ( undef, 0, 0.5, 1, -1, -3, "", "0", "0.5", "1", 9999999999999999, \"scalar", [] )
 
@@ -119,7 +122,7 @@ foreach my $val ( ( undef, -1, -3, "", 9999999999999999, \"scalar", [] ) )
     $tmp_pre_job->{progress} = $val;
     dies_ok { my $job = Redis::JobQueue::Job->new(
         $tmp_pre_job
-        ) } "expecting to die (progress = ".( $val // '<undef>' ).")";
+        ) } format_message( 'expecting to die (progress = %s)', $val );
 }
 
 $tmp_pre_job = { %{$pre_job} };
@@ -128,7 +131,7 @@ foreach my $val ( ( \"scalar", [] ) )
     $tmp_pre_job->{message} = $val;
     dies_ok { my $job = Redis::JobQueue::Job->new(
         $tmp_pre_job
-        ) } "expecting to die (message = ".( $val // '<undef>' ).")";
+        ) } format_message( 'expecting to die (message = %s)', $val );
 }
 
 foreach my $field ( qw( created updated completed failed ) )

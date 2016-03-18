@@ -40,6 +40,9 @@ use Redis::JobQueue::Job qw(
     STATUS_COMPLETED
     STATUS_FAILED
     );
+use Redis::JobQueue::Util qw(
+    format_message
+);
 
 use Redis::JobQueue::Test::Utils qw(
     verify_redis
@@ -123,7 +126,7 @@ dies_ok { $jq->queue_status } 'expecting to die - no args';
 
 foreach my $queue ( ( undef, "", \"scalar", [] ) )
 {
-    dies_ok { $jq->queue_status( $queue ) } 'expecting to die ('.( $queue // '<undef>' ).')';
+    dies_ok { $jq->queue_status( $queue ) } format_message( 'expecting to die (%s)', $queue );
 }
 
 };

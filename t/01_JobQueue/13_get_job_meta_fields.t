@@ -40,6 +40,9 @@ use Redis::JobQueue qw(
     DEFAULT_TIMEOUT
     );
 use Redis::JobQueue::Job;
+use Redis::JobQueue::Util qw(
+    format_message
+);
 use Storable;
 
 use Redis::JobQueue::Test::Utils qw(
@@ -160,7 +163,7 @@ is_deeply( \@mfields, \@arr_k, 'all meta fields present' );
 
 foreach my $id_source ( ( undef, "", \"scalar", [] ) )
 {
-    dies_ok { $jq->get_job_meta_fields( $id_source ) } 'expecting to die ('.( $id_source // '<undef>' ).')';
+    dies_ok { $jq->get_job_meta_fields( $id_source ) } format_message( 'expecting to die (%s)', $id_source );
 }
 
 };

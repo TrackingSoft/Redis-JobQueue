@@ -50,6 +50,10 @@ my %config = (
                 file                    => 'lib/Redis/JobQueue/Job.pm',
                 version                 => '1.16'
             },
+            'Redis::JobQueue::Util' => {
+                file                    => 'lib/Redis/JobQueue/Util.pm',
+                version                 => '1.16'
+            },
         },
         'meta-spec'             => { version => 2 },
         resources               => {

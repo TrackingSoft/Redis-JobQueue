@@ -68,6 +68,7 @@ The basic operation of the Redis::JobQueue package modules:
                           queues, as well as monitoring the status and results
                           of jobs
    Redis::JobQueue::Job - Object interface for creating and manipulating jobs
+   Redis::JobQueue::Util - String manipulation utilities
 
 COPYRIGHT AND LICENCE
 
