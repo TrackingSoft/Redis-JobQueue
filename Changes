@@ -1,5 +1,8 @@
 Revision history for Redis::JobQueue package
 
+    BUGFIXES:
+    - Tests corrected.
+
 1.16 Thu Sep  03 2015
     CHANGES:
     - In the parameters of the constructor 'redis' may be either a Redis object

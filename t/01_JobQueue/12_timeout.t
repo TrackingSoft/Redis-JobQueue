@@ -67,9 +67,10 @@ my $pre_job = {
 sub new_connect {
 
     # For Test::RedisServer
+    $port = Net::EmptyPort::empty_port( $port );
     $redis = get_redis( conf =>
         {
-            port                => Net::EmptyPort::empty_port( DEFAULT_PORT ),
+            port                => $port,
             maxmemory           => $maxmemory,
 #            "vm-enabled"        => $vm,
             "maxmemory-policy"  => $policy,
