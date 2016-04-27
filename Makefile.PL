@@ -22,7 +22,7 @@ my %config = (
         'Mouse'                 => 0,
         'Params::Util'          => 1.07,
         'Redis'                 => 1.976,
-        'Storable'              => 2.39,
+        'Storable'              => 2.18,
         'Try::Tiny'             => 0.18,
         },
     TEST_REQUIRES               => {

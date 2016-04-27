@@ -44,7 +44,7 @@
             "Mouse" : "2.4.1",
             "Params::Util" : "1.07",
             "Redis" : "1.976",
-            "Storable" : "2.39",
+            "Storable" : "2.18",
             "Try::Tiny" : "0.18",
             "perl" : "5.010"
          }
