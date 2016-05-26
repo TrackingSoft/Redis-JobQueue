@@ -3,6 +3,7 @@ Revision history for Redis::JobQueue package
     BUGFIXES:
     - Tests corrected.
     - Require perl 5.10 core modules version.
+    - Data::Dumper 'Sparseseen' method not used now.
 
 1.16 Thu Sep  03 2015
     CHANGES:
