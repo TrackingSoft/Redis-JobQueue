@@ -53,19 +53,19 @@
    "provides" : {
       "Redis::JobQueue" : {
          "file" : "lib/Redis/JobQueue.pm",
-         "version" : "1.16"
+         "version" : "1.17"
       },
       "Redis::JobQueue::Job" : {
          "file" : "lib/Redis/JobQueue/Job.pm",
-         "version" : "1.16"
+         "version" : "1.17"
       },
       "Redis::JobQueue::Util" : {
          "file" : "lib/Redis/JobQueue/Util.pm",
-         "version" : "1.16"
+         "version" : "1.17"
       }
    },
    "release_status" : "stable",
-   "version" : "1.16",
+   "version" : "1.17",
    "resources" : {
       "repository" : {
          "type" : "git",

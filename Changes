@@ -1,5 +1,6 @@
 Revision history for Redis::JobQueue package
 
+1.17 Thu May  26 2016
     BUGFIXES:
     - Tests corrected.
     - Require perl 5.10 core modules version.
