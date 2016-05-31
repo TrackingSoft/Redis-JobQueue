@@ -6,6 +6,7 @@ Makefile.PL                         Makefile generator
 README                              Get you started with this package
 lib/Redis/JobQueue.pm
 lib/Redis/JobQueue/Job.pm
+lib/Redis/JobQueue/Util.pm
 t/00_compile.t
 t/00_Job/00_compile.t
 t/00_Job/01_new.t

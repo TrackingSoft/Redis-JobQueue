@@ -6,7 +6,7 @@ Redis::JobQueue::Job - Object interface for creating and manipulating jobs
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Job> version 1.17
+This documentation refers to C<Redis::JobQueue::Job> version 1.18
 
 =cut
 
@@ -18,7 +18,7 @@ use warnings;
 
 # ENVIRONMENT ------------------------------------------------------------------
 
-our $VERSION = '1.17';
+our $VERSION = '1.18';
 
 #-- load the modules -----------------------------------------------------------
 

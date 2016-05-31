@@ -1,5 +1,9 @@
 Revision history for Redis::JobQueue package
 
+1.18 Thu May  31 2016
+    BUGFIXES:
+    - Fix MANIFEST.
+
 1.17 Thu May  26 2016
     BUGFIXES:
     - Tests corrected.
