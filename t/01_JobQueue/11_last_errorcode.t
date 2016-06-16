@@ -142,6 +142,7 @@ $jq->max_datasize( $prev_max_datasize );
 $job = $jq->add_job( $pre_job );
 isa_ok( $job, 'Redis::JobQueue::Job');
 
+ok !$jq->reconnect_on_error, 'reconnect_on_error FALSE';
 $jq->_redis->quit;
 
 @jobs = ();
@@ -150,6 +151,20 @@ is $jq->last_errorcode, E_NETWORK, "E_NETWORK";
 note '$@: ', $@;
 ok !scalar( @jobs ), '@jobs is empty';
 ok !$jq->_redis->ping, "server is not available";
+
+new_connect();
+
+#-- reconnect_on_error
+
+$job = $jq->add_job( $pre_job );
+$jq->reconnect_on_error( 1 );
+ok $jq->reconnect_on_error, 'reconnect_on_error TRUE';
+$jq->_redis->quit;
+@jobs = ();
+eval { @jobs = $jq->get_job_ids };
+is $jq->last_errorcode, E_NO_ERROR, "E_NO_ERROR";
+ok scalar( @jobs ), '@jobs is not empty';
+ok $jq->_redis->ping, "server is available";
 
 new_connect();
 

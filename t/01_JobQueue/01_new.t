@@ -30,6 +30,8 @@ use Redis::JobQueue qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    DEFAULT_CONNECTION_TIMEOUT
+    DEFAULT_OPERATION_TIMEOUT
     );
 
 use Redis::JobQueue::Job qw(
@@ -69,18 +71,77 @@ isa_ok( $jq, 'Redis::JobQueue' );
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, DEFAULT_TIMEOUT, $msg;
 ok ref( $jq->_redis ) eq 'Redis', $msg;
+ok !$jq->reconnect_on_error, $msg;
+is $jq->connection_timeout, undef, $msg;
+is $jq->operation_timeout, undef, $msg;
+
+$jq = Redis::JobQueue->new( @redis_params, reconnect_on_error => 1 );
+isa_ok( $jq, 'Redis::JobQueue' );
+is $jq->_server, $redis_addr, $msg;
+is $jq->timeout, DEFAULT_TIMEOUT, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
+ok $jq->reconnect_on_error, $msg;
+is $jq->connection_timeout, undef, $msg;
+is $jq->operation_timeout, undef, $msg;
 
 $jq = Redis::JobQueue->new( redis => Redis->new( server => $redis_addr ) );
 isa_ok( $jq, 'Redis::JobQueue' );
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, DEFAULT_TIMEOUT, $msg;
 ok ref( $jq->_redis ) eq 'Redis', $msg;
+ok !$jq->reconnect_on_error, $msg;
+ok !$jq->connection_timeout, $msg;
+ok !$jq->operation_timeout, $msg;
 
 $jq = Redis::JobQueue->new( redis => { server => $redis_addr } );
 isa_ok( $jq, 'Redis::JobQueue' );
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, DEFAULT_TIMEOUT, $msg;
 ok ref( $jq->_redis ) eq 'Redis', $msg;
+ok !$jq->reconnect_on_error, $msg;
+is $jq->connection_timeout, DEFAULT_CONNECTION_TIMEOUT, $msg;
+is $jq->operation_timeout, DEFAULT_OPERATION_TIMEOUT, $msg;
+
+$jq = Redis::JobQueue->new( redis => { server => $redis_addr }, reconnect_on_error => 1 );
+isa_ok( $jq, 'Redis::JobQueue' );
+is $jq->_server, $redis_addr, $msg;
+is $jq->timeout, DEFAULT_TIMEOUT, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
+ok $jq->reconnect_on_error, $msg;
+is $jq->connection_timeout, DEFAULT_CONNECTION_TIMEOUT, $msg;
+is $jq->operation_timeout, DEFAULT_OPERATION_TIMEOUT, $msg;
+
+$jq = Redis::JobQueue->new(
+    redis   => {
+        server  => $redis_addr
+    },
+    connection_timeout  => DEFAULT_CONNECTION_TIMEOUT + 1,
+    operation_timeout   => DEFAULT_OPERATION_TIMEOUT + 1,
+);
+isa_ok( $jq, 'Redis::JobQueue' );
+is $jq->_server, $redis_addr, $msg;
+is $jq->timeout, DEFAULT_TIMEOUT, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
+ok !$jq->reconnect_on_error, $msg;
+is $jq->connection_timeout, DEFAULT_CONNECTION_TIMEOUT + 1, $msg;
+is $jq->operation_timeout, DEFAULT_OPERATION_TIMEOUT + 1, $msg;
+
+$jq = Redis::JobQueue->new(
+    redis   => {
+        server  => $redis_addr,
+        cnx_timeout     => DEFAULT_CONNECTION_TIMEOUT + 1,
+        read_timeout    => DEFAULT_OPERATION_TIMEOUT + 1,
+        write_timeout   => DEFAULT_OPERATION_TIMEOUT + 2,
+    },
+    reconnect_on_error => 1
+);
+isa_ok( $jq, 'Redis::JobQueue' );
+is $jq->_server, $redis_addr, $msg;
+is $jq->timeout, DEFAULT_TIMEOUT, $msg;
+ok ref( $jq->_redis ) eq 'Redis', $msg;
+ok $jq->reconnect_on_error, $msg;
+is $jq->connection_timeout, DEFAULT_CONNECTION_TIMEOUT + 1, $msg;
+is $jq->operation_timeout, DEFAULT_OPERATION_TIMEOUT + 1, $msg;
 
 $jq = Redis::JobQueue->new(
     @redis_params,

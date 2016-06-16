@@ -27,6 +27,8 @@ our @EXPORT_OK  = qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    DEFAULT_CONNECTION_TIMEOUT
+    DEFAULT_OPERATION_TIMEOUT
     NAMESPACE
     E_NO_ERROR
     E_MISMATCH_ARG
@@ -254,6 +256,20 @@ Maximum time (in seconds) to wait for a new job from the queue,
 
 =cut
 use constant DEFAULT_TIMEOUT    => 0;           # 0 for an unlimited timeout
+
+=item C<DEFAULT_CONNECTION_TIMEOUT>
+
+Default socket timeout for connection, number of seconds: 0.1 .
+
+=cut
+use constant DEFAULT_CONNECTION_TIMEOUT => 0.1;
+
+=item C<DEFAULT_OPERATION_TIMEOUT>
+
+Default socket timeout for read and write operations, number of seconds: 1.
+
+=cut
+use constant DEFAULT_OPERATION_TIMEOUT  => 1;
 
 =item C<NAMESPACE>
 
@@ -565,7 +581,7 @@ END_GET_JOB_IDS
 
 =head2 CONSTRUCTOR
 
-=head3 C<new( redis =E<gt> $server, timeout =E<gt> $timeout, check_maxmemory =E<gt> $mode )>
+=head3 C<new( redis =E<gt> $server, timeout =E<gt> $timeout, check_maxmemory =E<gt> $mode, ... )>
 
 Creates a new C<Redis::JobQueue> object to communicate with Redis server.
 If invoked without any arguments, the constructor C<new> creates and returns
@@ -580,6 +596,27 @@ defines if attempt is made to find out maximum available memory from Redis.
 
 In some cases Redis implementation forbids such request,
 but setting <check_maxmemory> to false can be used as a workaround.
+
+This example illustrates a C<new()> call with all the valid arguments:
+
+    my $coll = Redis::CappedCollection->create(
+        redis   => { server => "$server:$port" },   # Redis object
+                                    # or hash reference to parameters to create a new Redis object.
+        timeout => $timeout,        # wait time (in seconds)
+                                    # for blocking call of get_next_job.
+                                    # Set 0 for unlimited wait time
+        check_maxmemory => $mode,   # boolean argument (default is true)
+                                    # defines if attempt is made to find out
+                                    # maximum available memory from Redis.
+        reconnect_on_error  => 0,   # Boolean argument (default is false).
+                                    # Controls ability to force re-connection with Redis on error.
+        connection_timeout  => DEFAULT_CONNECTION_TIMEOUT,  # Socket timeout for connection,
+                                    # number of seconds (can be fractional).
+                                    # NOTE: Changes external socket configuration.
+        operation_timeout   => DEFAULT_OPERATION_TIMEOUT,   # Socket timeout for read and write operations,
+                                    # number of seconds (can be fractional).
+                                    # NOTE: Changes external socket configuration.
+    );
 
 =head3 Caveats related to connection with Redis server
 
@@ -691,7 +728,13 @@ around BUILDARGS => sub {
         elsif ( ref( $redis ) eq 'HASH' ) {
             $args{_use_external_connection} = 0;
             my $conf = $redis;
-            $conf->{server} = DEFAULT_SERVER.':'.DEFAULT_PORT unless exists $conf->{server};
+            $conf->{server}                 = DEFAULT_SERVER.':'.DEFAULT_PORT   unless exists $conf->{server};
+            $conf->{reconnect}              = 0                                 unless exists $conf->{reconnect};
+            $conf->{every}                  = 1000                              unless exists $conf->{every};   # 1 ms
+            $conf->{conservative_reconnect} = 0                                 unless exists $conf->{conservative_reconnect};
+            $conf->{cnx_timeout}    = $args{connection_timeout} = $conf->{cnx_timeout}  || $args{connection_timeout}    || DEFAULT_CONNECTION_TIMEOUT;
+            $conf->{read_timeout}   = $args{operation_timeout}  = $conf->{read_timeout} || $args{operation_timeout}     || DEFAULT_OPERATION_TIMEOUT;
+            $conf->{write_timeout}  = $conf->{read_timeout};
             delete $args{redis};
             return $class->$orig(
                 redis   => $conf->{server},
@@ -717,6 +760,9 @@ sub BUILD {
             if $max_datasize;
     }
 
+    $self->_connection_timeout_trigger( $self->connection_timeout );
+    $self->_operation_timeout_trigger( $self->operation_timeout );
+
     my ( $major, $minor ) = $self->_redis->info->{redis_version} =~ /^(\d+)\.(\d+)/;
     if ( $major < 2 || $major == 2 && $minor <= 4 ) {
         $self->_error( E_REDIS );
@@ -725,6 +771,12 @@ sub BUILD {
 }
 
 #-- public attributes ----------------------------------------------------------
+
+subtype __PACKAGE__.'::NonNegNum',
+    as 'Num',
+    where { $_ >= 0 },
+    message { format_message( '%s is not a non-negative number!', $_ ) }
+;
 
 =head2 METHODS
 
@@ -748,6 +800,81 @@ has 'timeout'           => (
     isa         => 'Redis::JobQueue::Job::NonNegInt',
     default     => DEFAULT_TIMEOUT,
 );
+
+=head3 reconnect_on_error
+
+Controls ability to force re-connection with Redis on error.
+
+=cut
+has reconnect_on_error      => (
+    is          => 'rw',
+    isa         => 'Bool',
+    default     => 0,
+);
+
+=head3 connection_timeout
+
+Controls socket timeout for Redis server connection, number of seconds (can be fractional).
+
+NOTE: Changes external socket configuration.
+
+=cut
+has connection_timeout      => (
+    is          => 'rw',
+    isa         => 'Maybe['.__PACKAGE__.'::NonNegNum]',
+    default     => undef,
+    trigger     => \&_connection_timeout_trigger,
+);
+
+sub _connection_timeout_trigger {
+    my ( $self, $timeout, $old_timeout ) = @_;
+
+    return if scalar( @_ ) == 2 && ( !defined( $timeout ) && !defined( $old_timeout ) );
+
+    if ( my $redis = $self->_redis ) {
+        my $socket = _INSTANCE( $redis->{sock}, 'IO::Socket' ) or confess( 'Bad socket object' );
+        # IO::Socket provides a way to set a timeout on the socket,
+        # but the timeout will be used only for connection,
+        # not for reading / writing operations.
+        $socket->timeout( $redis->{cnx_timeout} = $timeout );
+    }
+}
+
+=head3 operation_timeout
+
+Controls socket timeout for Redis server read and write operations, number of seconds (can be fractional).
+
+NOTE: Changes external socket configuration.
+
+=cut
+has operation_timeout       => (
+    is          => 'rw',
+    isa         => 'Maybe['.__PACKAGE__.'::NonNegNum]',
+    default     => undef,
+    trigger     => \&_operation_timeout_trigger,
+);
+
+sub _operation_timeout_trigger {
+    my ( $self, $timeout, $old_timeout ) = @_;
+
+    return if scalar( @_ ) == 2 && ( !defined( $timeout ) && !defined( $old_timeout ) );
+
+    if ( my $redis = $self->_redis ) {
+        my $socket = _INSTANCE( $redis->{sock}, 'IO::Socket' ) or confess( 'Bad socket object' );
+        # IO::Socket::Timeout provides a way to set a timeout
+        # on read / write operations on an IO::Socket instance,
+        # or any IO::Socket::* modules, like IO::Socket::INET.
+        if ( defined $timeout ) {
+            $redis->{write_timeout} = $redis->{read_timeout} = $timeout;
+            $redis->_maybe_enable_timeouts( $socket );
+            $socket->enable_timeout;
+        } else {
+            $redis->{write_timeout} = $redis->{read_timeout} = 0;
+            $redis->_maybe_enable_timeouts( $socket );
+            $socket->disable_timeout;
+        }
+    }
+}
 
 =head3 C<max_datasize>
 
@@ -1617,6 +1744,8 @@ sub queue_status {
 sub _redis_exception {
     my ( $self, $error ) = @_;
 
+    my $err_msg = '';
+
     # Use the error messages from Redis.pm
     if (
                $error =~ /^Could not connect to Redis server at /
@@ -1627,6 +1756,9 @@ sub _redis_exception {
             || $error =~ /^Redis server closed connection/
         ) {
         $self->_error( E_NETWORK );
+
+        # For connection problem
+        $err_msg = $self->_reconnect( E_NETWORK, $err_msg ) if $self->reconnect_on_error;
     } elsif (
                $error =~ /[\S+] ERR command not allowed when used memory > 'maxmemory'/
             || $error =~ /[\S+] OOM command not allowed when used memory > 'maxmemory'/
@@ -1634,6 +1766,9 @@ sub _redis_exception {
         $self->_error( E_MAX_MEMORY_LIMIT );
     } else {
         $self->_error( E_REDIS );
+
+        # For possible connection problems
+        $err_msg = $self->_reconnect( E_REDIS, $err_msg ) if $self->reconnect_on_error;
     }
 
     if ( $self->_transaction ) {
@@ -1642,7 +1777,8 @@ sub _redis_exception {
         };
         $self->_transaction( 0 );
     }
-    die $error;
+
+    die( format_message( '%s %s', $error, $err_msg ) );
 }
 
 sub _redis_constructor {
@@ -1669,6 +1805,11 @@ sub _redis_constructor {
 sub _call_redis {
     my $self   = shift;
     my $method = shift;
+
+    if ( $self->reconnect_on_error && !$self->ping ) {
+        my $err_msg = $self->_reconnect();
+        confess( format_message( '%s: %s', $ERROR[ E_REDIS ], $err_msg ) ) if $err_msg;
+    }
 
     my @result;
     $self->_error( E_NO_ERROR );
@@ -1765,6 +1906,37 @@ sub _call_redis {
     }
 
     return wantarray ? @result : $result[0];
+}
+
+sub _reconnect {
+    my $self    = shift;
+    my $err     = shift // 0;
+    my $msg     = shift;
+
+    my $err_msg = '';
+    if (
+            !$err || (
+                   $err != E_MISMATCH_ARG
+                && $err != E_DATA_TOO_LARGE
+                && $err != E_MAX_MEMORY_LIMIT
+                && $err != E_JOB_DELETED
+            )
+        ) {
+        try {
+            $self->_redis->connect;
+        } catch {
+            my $error = $_;
+            $err_msg = "(Not reconnected: $error)";
+        };
+    }
+
+    if ( $err_msg ) {
+        $msg = defined( $msg )
+            ? ( $msg ? "$msg " : '' )."($err_msg)"
+            : $err_msg;
+    }
+
+    return $msg;
 }
 
 sub _jkey {

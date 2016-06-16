@@ -6,13 +6,15 @@ use warnings;
 
 use lib 'lib';
 
-use Test::More tests => 28;
+use Test::More tests => 30;
 use Test::NoWarnings;
 
 BEGIN { use_ok 'Redis::JobQueue', qw(
     DEFAULT_SERVER
     DEFAULT_PORT
     DEFAULT_TIMEOUT
+    DEFAULT_CONNECTION_TIMEOUT
+    DEFAULT_OPERATION_TIMEOUT
 
     E_NO_ERROR
     E_MISMATCH_ARG
@@ -43,6 +45,8 @@ can_ok( 'Redis::JobQueue', 'last_errorcode' );
 my $val;
 ok( $val = DEFAULT_SERVER(),    "import OK: $val" );
 ok( $val = DEFAULT_PORT(),      "import OK: $val" );
+ok( $val = DEFAULT_CONNECTION_TIMEOUT(),    "import OK: $val" );
+ok( $val = DEFAULT_OPERATION_TIMEOUT(),     "import OK: $val" );
 $val = undef;
 ok( defined ( $val = DEFAULT_TIMEOUT() ),   "import OK: $val" );
 
