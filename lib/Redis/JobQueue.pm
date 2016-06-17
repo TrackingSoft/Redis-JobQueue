@@ -1748,7 +1748,7 @@ sub _redis_exception {
 
     # Use the error messages from Redis.pm
     if (
-               $error =~ /^Could not connect to Redis server at /
+               $error =~ /Could not connect to Redis server at /    # not in start if not reconnected
             || $error =~ /^Can't close socket: /
             || $error =~ /^Not connected to any server/
             # Maybe for pub/sub only
@@ -1806,14 +1806,15 @@ sub _call_redis {
     my $self   = shift;
     my $method = shift;
 
-    if ( $self->reconnect_on_error && !$self->ping ) {
+    $self->_error( E_NO_ERROR );
+
+    if ( !$self->_transaction && $self->reconnect_on_error && !$self->ping ) {
         my $err_msg = $self->_reconnect();
-        confess( format_message( '%s: %s', $ERROR[ E_REDIS ], $err_msg ) ) if $err_msg;
+        $self->_redis_exception( $err_msg )
+            if $err_msg;
     }
 
     my @result;
-    $self->_error( E_NO_ERROR );
-
     my $error;
     # if you use "$method eq 'HSET'" then use $_[0..2] to reduce data copies
     # $_[0] - key
@@ -1923,6 +1924,7 @@ sub _reconnect {
             )
         ) {
         try {
+            # NOTE: socket recreated
             $self->_redis->connect;
         } catch {
             my $error = $_;
