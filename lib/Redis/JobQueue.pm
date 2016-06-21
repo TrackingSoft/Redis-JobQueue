@@ -916,7 +916,7 @@ has 'last_errorcode'    => (
     reader      => 'last_errorcode',
     writer      => '_set_last_errorcode',
     isa         => 'Int',
-    default     => 0,
+    default     => E_NO_ERROR,
 );
 
 #-- private attributes ---------------------------------------------------------
