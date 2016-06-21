@@ -591,6 +591,8 @@ sub clear_modified {
         if    ( exists $self->__modified->{ $field } ) { $self->__modified->{ $field } = 0 }
         elsif ( exists $self->__modified_meta_data->{ $field } ) { $self->__modified_meta_data->{ $field } = 0 }
     }
+
+    return;
 }
 
 =head3 C<modified_attributes>
@@ -651,6 +653,8 @@ sub _modified_set {
     }
 
     ++$self->__modified->{ $field };
+
+    return;
 }
 
 #-- Closes and cleans up -------------------------------------------------------

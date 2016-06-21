@@ -745,6 +745,8 @@ around BUILDARGS => sub {
             return $class->$orig( %args );
         }
     }
+
+    return;
 };
 
 sub BUILD {
@@ -768,6 +770,8 @@ sub BUILD {
         $self->_error( E_REDIS );
         confess 'Needs Redis server version 2.6 or higher';
     }
+
+    return;
 }
 
 #-- public attributes ----------------------------------------------------------
@@ -838,6 +842,8 @@ sub _connection_timeout_trigger {
         # not for reading / writing operations.
         $socket->timeout( $redis->{cnx_timeout} = $timeout );
     }
+
+    return;
 }
 
 =head3 operation_timeout
@@ -874,6 +880,8 @@ sub _operation_timeout_trigger {
             $socket->disable_timeout;
         }
     }
+
+    return;
 }
 
 =head3 C<max_datasize>
@@ -1183,6 +1191,8 @@ sub get_job_data {
 
         return @data;
     }
+
+    return;
 }
 
 =head3 C<get_job_meta_fields( $job )>
@@ -1403,6 +1413,8 @@ sub _get_next_job {
         # to the next job ID selection
         return;
     }
+
+    return;
 }
 
 =head3 C<update_job( $job )>
@@ -1759,6 +1771,7 @@ sub _redis_exception {
         $self->_error( E_NETWORK );
 
         # For connection problem
+        $self->_clear_sha1;
         $err_msg = $self->_reconnect( E_NETWORK, $err_msg ) if $self->reconnect_on_error;
     } elsif (
                $error =~ /[\S+] ERR command not allowed when used memory > 'maxmemory'/
@@ -1769,6 +1782,7 @@ sub _redis_exception {
         $self->_error( E_REDIS );
 
         # For possible connection problems
+        $self->_clear_sha1;
         $err_msg = $self->_reconnect( E_REDIS, $err_msg ) if $self->reconnect_on_error;
     }
 
@@ -1780,6 +1794,8 @@ sub _redis_exception {
     }
 
     die( format_message( '%s %s', $error, $err_msg ) );
+
+    return;
 }
 
 sub _redis_constructor {
@@ -1810,6 +1826,7 @@ sub _call_redis {
     $self->_error( E_NO_ERROR );
 
     if ( !$self->_transaction && $self->reconnect_on_error && !$self->ping ) {
+        $self->_clear_sha1;
         my $err_msg = $self->_reconnect();
         $self->_redis_exception( $err_msg )
             if $err_msg;
@@ -1930,7 +1947,6 @@ sub _reconnect {
         } catch {
             my $error = $_;
             $err_msg = "(Not reconnected: $error)";
-            $self->_clear_sha1;
         };
     }
 
@@ -1983,6 +1999,8 @@ sub _clear_sha1 {
     my ( $self ) = @_;
 
     $self->_lua_scripts( {} );
+
+    return;
 }
 
 sub _error {
