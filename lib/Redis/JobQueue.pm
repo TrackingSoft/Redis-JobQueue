@@ -946,7 +946,7 @@ has '_transaction'      => (
 );
 
 has '_lua_scripts'          => (
-    is          => 'ro',
+    is          => 'rw',
     isa         => 'HashRef[Str]',
     lazy        => 1,
     init_arg    => undef,
@@ -1657,6 +1657,7 @@ sub quit {
     return if $] >= 5.14 && ${^GLOBAL_PHASE} eq 'DESTRUCT';
 
     $self->_error( E_NO_ERROR );
+    $self->_clear_sha1;
 
     unless ( $self->_use_external_connection ) {
         try {
@@ -1929,6 +1930,7 @@ sub _reconnect {
         } catch {
             my $error = $_;
             $err_msg = "(Not reconnected: $error)";
+            $self->_clear_sha1;
         };
     }
 
@@ -1975,6 +1977,12 @@ sub _lua_script_cmd {
         }
     }
     return( 'EVALSHA', $sha1 );
+}
+
+sub _clear_sha1 {
+    my ( $self ) = @_;
+
+    $self->_lua_scripts( {} );
 }
 
 sub _error {
