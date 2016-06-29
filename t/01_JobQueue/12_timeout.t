@@ -123,7 +123,7 @@ $job = $jq->get_next_job(
     queue    => 'lovely_queue',
     blocking => 0,
     );
-ok time - $tm == 0, "timeout ok";
+ok time - $tm <= 1, "timeout ok";
 
 #-- sample
 

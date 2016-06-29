@@ -68,6 +68,11 @@ my $msg = "attribute is set correctly";
 
 $jq = Redis::JobQueue->new( @redis_params );
 isa_ok( $jq, 'Redis::JobQueue' );
+
+my $redis_server_info = $jq->_redis->info( 'server' );
+my $redis_version = $redis_server_info->{redis_version};
+diag "redis-server version: $redis_version";
+
 is $jq->_server, $redis_addr, $msg;
 is $jq->timeout, DEFAULT_TIMEOUT, $msg;
 ok ref( $jq->_redis ) eq 'Redis', $msg;

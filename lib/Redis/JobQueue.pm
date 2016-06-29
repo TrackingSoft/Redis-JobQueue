@@ -1044,6 +1044,8 @@ sub add_job {
 
     my %args = ( @_ );
 
+    $self->_reconnect;
+
     my ( $id, $key );
     do {
         $self->_call_redis( 'UNWATCH' );
@@ -1137,6 +1139,8 @@ sub get_job_data {
 
     $self->_error( E_NO_ERROR );
 
+    $self->_reconnect;
+
     my $tm = time;
     my ( $job_exists, @data ) = $self->_call_redis(
         $self->_lua_script_cmd( 'get_job_data' ),
@@ -1219,6 +1223,8 @@ the jobs metadata.
 sub get_job_meta_fields {
     my ( $self, $id_source ) = @_;
 
+    $self->_reconnect;
+
     return grep { !$job_fnames{ $_ } && $_ ne $_ID_IN_QUEUE_FIELD } $self->_call_redis( 'HKEYS', $self->_jkey( $self->_get_job_id( $id_source ) ) );
 }
 
@@ -1243,6 +1249,8 @@ sub load_job {
     my $job_id = $self->_get_job_id( $id_source );
 
     $self->_error( E_NO_ERROR );
+
+    $self->_reconnect;
 
     my ( $job_exists, @job_data ) = $self->_call_redis(
         $self->_lua_script_cmd( 'load_job' ),
@@ -1341,6 +1349,10 @@ sub get_next_job {
     my @keys = ();
     push @keys, map { $self->_qkey( $_ ) } @$queues;
 
+    $self->_error( E_NO_ERROR );
+
+    $self->_reconnect;
+
     if ( @keys ) {
         @keys = shuffle( @keys );
 
@@ -1391,6 +1403,8 @@ sub get_next_job_id {
 
 sub _get_next_job {
     my ( $self, $full_id, $only_id ) = @_;
+
+#    $self->_reconnect;
 
     my ( $id, $expire_time ) = split ' ', $full_id;
     my $key = $self->_jkey( $id );
@@ -1445,6 +1459,10 @@ sub update_job {
 
     my @modified = $job->modified_attributes;
     return 0 unless @modified;
+
+    $self->_error( E_NO_ERROR );
+
+    $self->_reconnect;
 
     my $id = $job->id;
     my $key = $self->_jkey( $id );
@@ -1516,6 +1534,8 @@ sub delete_job {
 
     $self->_error( E_NO_ERROR );
 
+    $self->_reconnect;
+
     return $self->_call_redis(
         $self->_lua_script_cmd( 'delete_job' ),
         0,
@@ -1585,6 +1605,8 @@ sub get_job_ids {
 
     $self->_error( E_NO_ERROR );
 
+    $self->_reconnect;
+
     my @ids = $self->_call_redis(
         $self->_lua_script_cmd( 'get_job_ids' ),
         0,
@@ -1639,14 +1661,12 @@ sub ping {
 
     $self->_error( E_NO_ERROR );
 
-    my $ret;
-    try {
-        $ret = $self->_redis->ping;
-    } catch {
-        $self->_redis_exception( $_ );
-    };
+    my $ret = $self->_redis->ping;
 
-    return( ( $ret // '<undef>' ) eq 'PONG' ? 1 : 0 );
+    $ret = ( $ret // '<undef>' ) eq 'PONG' ? 1 : 0;
+    $self->_clear_sha1 unless $ret;
+
+    return $ret;
 }
 
 =head3 C<quit>
@@ -1671,13 +1691,7 @@ sub quit {
     $self->_error( E_NO_ERROR );
     $self->_clear_sha1;
 
-    unless ( $self->_use_external_connection ) {
-        try {
-            $self->_redis->quit;
-        } catch {
-            $self->_redis_exception( $_ );
-        };
-    }
+    $self->_redis->quit unless $self->_use_external_connection;
 
     return;
 }
@@ -1742,6 +1756,8 @@ sub queue_status {
 
     $self->_error( E_NO_ERROR );
 
+    $self->_reconnect;
+
     my %qstatus = $self->_call_redis(
         $self->_lua_script_cmd( 'queue_status' ),
         0,
@@ -1772,7 +1788,7 @@ sub _redis_exception {
 
         # For connection problem
         $self->_clear_sha1;
-        $err_msg = $self->_reconnect( E_NETWORK, $err_msg ) if $self->reconnect_on_error;
+        $err_msg = $self->_do_reconnect( E_NETWORK, $err_msg ) if !$self->_transaction && $self->reconnect_on_error;
     } elsif (
                $error =~ /[\S+] ERR command not allowed when used memory > 'maxmemory'/
             || $error =~ /[\S+] OOM command not allowed when used memory > 'maxmemory'/
@@ -1783,7 +1799,7 @@ sub _redis_exception {
 
         # For possible connection problems
         $self->_clear_sha1;
-        $err_msg = $self->_reconnect( E_REDIS, $err_msg ) if $self->reconnect_on_error;
+        $err_msg = $self->_do_reconnect( E_REDIS, $err_msg ) if !$self->_transaction && $self->reconnect_on_error;
     }
 
     if ( $self->_transaction ) {
@@ -1824,13 +1840,6 @@ sub _call_redis {
     my $method = shift;
 
     $self->_error( E_NO_ERROR );
-
-    if ( !$self->_transaction && $self->reconnect_on_error && !$self->ping ) {
-        $self->_clear_sha1;
-        my $err_msg = $self->_reconnect();
-        $self->_redis_exception( $err_msg )
-            if $err_msg;
-    }
 
     my @result;
     my $error;
@@ -1928,6 +1937,16 @@ sub _call_redis {
 }
 
 sub _reconnect {
+    my ( $self ) = @_;
+
+    if ( !$self->_transaction && $self->reconnect_on_error && !$self->ping ) {
+        my $err_msg = $self->_do_reconnect;
+        $self->_redis_exception( $err_msg )
+            if $err_msg;
+    }
+}
+
+sub _do_reconnect {
     my $self    = shift;
     my $err     = shift // 0;
     my $msg     = shift;
@@ -1941,12 +1960,15 @@ sub _reconnect {
                 && $err != E_JOB_DELETED
             )
         ) {
+        $self->_clear_sha1 if $err;
         try {
             # NOTE: socket recreated
+            $self->_redis->quit;
             $self->_redis->connect;
         } catch {
             my $error = $_;
             $err_msg = "(Not reconnected: $error)";
+            $self->_clear_sha1;
         };
     }
 
