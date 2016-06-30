@@ -1652,7 +1652,7 @@ If there is no connection to the Redis server (methods return 0), the connection
 In this case, to continue working with the queue,
 you must re-create the C<Redis::JobQueue> object with the L</new> method.
 When using an external connection to the server,
-to check the connection to the server you can use the C<$redis->echo( ... )> call.
+to check the connection to the server you can use the C<$redis-E<gt>echo( ... )> call.
 This is useful to avoid closing the connection to the Redis server unintentionally.
 
 =cut
@@ -1679,8 +1679,8 @@ The following example illustrates use of the C<quit> method:
 
 It does not close the connection to the Redis server if it is an external connection provided
 to queue constructor as existing L<Redis> object.
-When using an external connection (eg, C<$redis = Redis-> new (...);>),
-to close the connection to the Redis server, call C<$redis->quit> after calling this method.
+When using an external connection (eg, C<$redis = Redis-E<gt> new (...);>),
+to close the connection to the Redis server, call C<$redis-E<gt>quit> after calling this method.
 
 =cut
 sub quit {
