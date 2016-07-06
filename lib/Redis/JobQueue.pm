@@ -732,8 +732,8 @@ around BUILDARGS => sub {
             $conf->{reconnect}              = 0                                 unless exists $conf->{reconnect};
             $conf->{every}                  = 1000                              unless exists $conf->{every};   # 1 ms
             $conf->{conservative_reconnect} = 0                                 unless exists $conf->{conservative_reconnect};
-            $conf->{cnx_timeout}    = $args{connection_timeout} = $conf->{cnx_timeout}  || $args{connection_timeout}    || DEFAULT_CONNECTION_TIMEOUT;
-            $conf->{read_timeout}   = $args{operation_timeout}  = $conf->{read_timeout} || $args{operation_timeout}     || DEFAULT_OPERATION_TIMEOUT;
+            $conf->{cnx_timeout}    = $args{connection_timeout} = $conf->{cnx_timeout}  // $args{connection_timeout}    // DEFAULT_CONNECTION_TIMEOUT;
+            $conf->{read_timeout}   = $args{operation_timeout}  = $conf->{read_timeout} // $args{operation_timeout}     // DEFAULT_OPERATION_TIMEOUT;
             $conf->{write_timeout}  = $conf->{read_timeout};
             delete $args{redis};
             return $class->$orig(
