@@ -56,7 +56,7 @@ sub verify_redis
     {
         eval { $real_redis = Redis->new( server => DEFAULT_SERVER.":".$port ) };
         $skip_msg = "Redis server is unavailable" unless ( !$@ && $real_redis && $real_redis->ping );
-        $skip_msg = "Need a Redis server version 2.6 or higher" if ( !$skip_msg && !eval { return $real_redis->eval( 'return 1', 0 ) } );
+        $skip_msg = "Need a Redis server version 2.8 or higher" if ( !$skip_msg && !eval { return $real_redis->eval( 'return 1', 0 ) } );
         $real_redis->quit if $real_redis;
     }
     else

@@ -62,6 +62,11 @@ SKIP: {
     diag $skip_msg if $skip_msg;
     skip( $skip_msg, 1 ) if $skip_msg;
 
+    {
+        no warnings;
+        $Redis::CappedCollection::WAIT_USED_MEMORY = 1;
+    }
+
 my ( $jq, $job, @jobs, $maxmemory, $vm, $policy );
 my $pre_job = {
     id           => '4BE19672-C503-11E1-BF34-28791473A258',

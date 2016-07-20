@@ -96,6 +96,9 @@ foreach my $queue ( ( $pre_job->{queue}, $job ) )
     note "queue status = ", Dumper( $qstatus );
 
     is $qstatus->{length}, 4, 'correct length';
+    is $jq->queue_length( $queue ), 4, 'correct queue_length';
+    is $jq->queue_length( $job ), 4, 'correct queue_length';
+    is $jq->queue_length( 'Wrong queue' ), 0, 'correct wrong queue length';
     is $qstatus->{all_jobs}, 5, 'correct all_jobs';
     ok $qstatus->{lifetime}, 'lifetime present';
     ok $qstatus->{max_job_age}, 'max_job_age present';

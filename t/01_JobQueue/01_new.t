@@ -66,8 +66,12 @@ isa_ok( $redis, 'Test::RedisServer' );
 my ( $jq, $next_jq );
 my $msg = "attribute is set correctly";
 
-$jq = Redis::JobQueue->new( @redis_params );
-isa_ok( $jq, 'Redis::JobQueue' );
+foreach my $additional ( [ no_auto_connect_on_new => 1 ], [] )
+{
+    $jq = Redis::JobQueue->new( @redis_params, @$additional );
+    isa_ok( $jq, 'Redis::JobQueue' );
+    ok $jq->_redis->ping, "server is available";
+}
 
 my $redis_server_info = $jq->_redis->info( 'server' );
 my $redis_version = $redis_server_info->{redis_version};
@@ -89,14 +93,17 @@ ok $jq->reconnect_on_error, $msg;
 is $jq->connection_timeout, undef, $msg;
 is $jq->operation_timeout, undef, $msg;
 
-$jq = Redis::JobQueue->new( redis => Redis->new( server => $redis_addr ) );
-isa_ok( $jq, 'Redis::JobQueue' );
-is $jq->_server, $redis_addr, $msg;
-is $jq->timeout, DEFAULT_TIMEOUT, $msg;
-ok ref( $jq->_redis ) eq 'Redis', $msg;
-ok !$jq->reconnect_on_error, $msg;
-ok !$jq->connection_timeout, $msg;
-ok !$jq->operation_timeout, $msg;
+foreach my $additional ( [ no_auto_connect_on_new => 1 ], [] )
+{
+    $jq = Redis::JobQueue->new( redis => Redis->new( server => $redis_addr, @$additional ) );
+    isa_ok( $jq, 'Redis::JobQueue' );
+    is $jq->_server, $redis_addr, $msg;
+    is $jq->timeout, DEFAULT_TIMEOUT, $msg;
+    ok ref( $jq->_redis ) eq 'Redis', $msg;
+    ok !$jq->reconnect_on_error, $msg;
+    ok !$jq->connection_timeout, $msg;
+    ok !$jq->operation_timeout, $msg;
+}
 
 $jq = Redis::JobQueue->new( redis => { server => $redis_addr } );
 isa_ok( $jq, 'Redis::JobQueue' );

@@ -75,6 +75,7 @@ use Storable qw(
     nfreeze
     thaw
 );
+use Time::HiRes ();
 use Try::Tiny;
 
 #-- declarations ---------------------------------------------------------------
@@ -351,6 +352,9 @@ our @ERROR = (
     'job was removed prior to use',
     'Redis error',
 );
+
+our $WAIT_USED_MEMORY   = 0;    # No attempt to protect against used_memory > maxmemory
+#our $WAIT_USED_MEMORY   = 1;
 
 my $_ID_IN_QUEUE_FIELD = '__id_in_queue__';
 
@@ -754,6 +758,8 @@ sub BUILD {
 
     $self->_redis( $self->_redis_constructor )
         unless ( $self->_redis );
+    $self->_redis->connect if exists( $self->_redis->{no_auto_connect_on_new} ) && $self->_redis->{no_auto_connect_on_new};
+
     if ( $self->_check_maxmemory ) {
         my ( undef, $max_datasize ) = $self->_call_redis( 'CONFIG', 'GET', 'maxmemory' );
         defined( _NONNEGINT( $max_datasize ) )
@@ -766,9 +772,9 @@ sub BUILD {
     $self->_operation_timeout_trigger( $self->operation_timeout );
 
     my ( $major, $minor ) = $self->_redis->info->{redis_version} =~ /^(\d+)\.(\d+)/;
-    if ( $major < 2 || $major == 2 && $minor <= 4 ) {
+    if ( $major < 2 || $major == 2 && $minor < 8 ) {
         $self->_error( E_REDIS );
-        confess 'Needs Redis server version 2.6 or higher';
+        confess 'Needs Redis server version 2.8 or higher';
     }
 
     return;
@@ -1762,10 +1768,43 @@ sub queue_status {
         $self->_lua_script_cmd( 'queue_status' ),
         0,
         $maybe_queue,
-        Time::HiRes::time,
+        Time::HiRes::time(),
     );
 
     return \%qstatus;
+}
+
+=head3 C<queue_length>
+
+Gets queue length from the Redis server.
+Queue name is obtained from the argument. The can be a string representing a queue name
+or a L<Redis::JobQueue::Job|Redis::JobQueue::Job> object.
+
+If queue does not exist, it is interpreted as an empty list and 0 is returned.
+
+The following examples illustrate uses of the C<queue_length> method:
+
+    $queue_length = $jq->queue_length( $queue_name );
+    # or
+    $queue_length = $jq->queue_status( $job );
+
+=cut
+sub queue_length {
+    my ( $self, $maybe_queue ) = @_;
+
+    defined( _STRING( $maybe_queue ) ) || _INSTANCE( $maybe_queue, 'Redis::JobQueue::Job' )
+        || confess $self->_error( E_MISMATCH_ARG );
+
+    $maybe_queue = $maybe_queue->queue
+        if ref $maybe_queue;
+
+    $self->_error( E_NO_ERROR );
+
+    $self->_reconnect;
+
+    my $queue_lenght = $self->_call_redis( 'LLEN', $self->_qkey( $maybe_queue ) );
+
+    return $queue_lenght;
 }
 
 #-- private methods ------------------------------------------------------------
@@ -1840,6 +1879,8 @@ sub _call_redis {
     my $method = shift;
 
     $self->_error( E_NO_ERROR );
+
+    $self->_wait_used_memory if $self && $method =~ /^EVAL/i;
 
     my @result;
     my $error;
@@ -1934,6 +1975,33 @@ sub _call_redis {
     }
 
     return wantarray ? @result : $result[0];
+}
+
+sub _wait_used_memory {
+    return unless $WAIT_USED_MEMORY;
+
+    my ( $self ) = @_;
+
+    my ( undef, $maxmemory ) = $self->_call_redis( 'CONFIG', 'GET', 'maxmemory' );
+    my $sleepped;
+    if ( $maxmemory ) {
+        my $max_timeout = $self->operation_timeout || DEFAULT_OPERATION_TIMEOUT;
+        my $timeout = 0.01;
+        $sleepped = 0;
+        WAIT_USED_MEMORY: {
+            my ( $used_memory ) = $self->_call_redis( 'INFO', 'memory' ) =~ /used_memory:(\d+)/;
+            if ( $used_memory < $maxmemory || $sleepped > $max_timeout ) {
+                last WAIT_USED_MEMORY;
+            }
+
+            Time::HiRes::sleep $timeout;
+            $sleepped += $timeout;
+#            $self->_redis->connect;
+            redo WAIT_USED_MEMORY;
+        }
+    }
+
+    return $sleepped;
 }
 
 sub _reconnect {
@@ -2391,7 +2459,7 @@ store such string as part of L<workload|Redis::JobQueue::Job/workload> / L<resul
 
 =back
 
-Needs Redis server version 2.6 or higher as module uses Redis Lua scripting.
+Needs Redis server version 2.8 or higher as module uses Redis Lua scripting.
 
 The use of C<maxmemory-police all*> in the F<redis.conf> file could lead to
 a serious (but hard to detect) problem as Redis server may delete
@@ -2404,6 +2472,8 @@ to forward the request to the appropriate node in the cluster.
 
 We strongly recommend using of C<maxmemory> option in the F<redis.conf> file if
 the data set may be large.
+
+WARN: Not use C<maxmemory> less than for example 70mb (60 connections) for avoid 'used_memory > maxmemory' problem.
 
 The C<Redis::JobQueue> package was written, tested, and found working on recent
 Linux distributions.

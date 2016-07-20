@@ -5,6 +5,8 @@ Revision history for Redis::JobQueue package
     - $DEFAULT_CONNECTION_TIMEOUT, $DEFAULT_OPERATION_TIMEOUT constants added.
     - connection_timeout, operation_timeout attributes added.
     - Added the service module Redis::JobQueue::Util.
+    - Attempt to protect against used_memory > maxmemory.
+    - Added the 'queue_length' method.
 
 1.18 Thu May  31 2016
     BUGFIXES:
