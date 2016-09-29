@@ -758,7 +758,11 @@ sub BUILD {
 
     $self->_redis( $self->_redis_constructor )
         unless ( $self->_redis );
-    $self->_redis->connect if exists( $self->_redis->{no_auto_connect_on_new} ) && $self->_redis->{no_auto_connect_on_new};
+    $self->_redis->connect if
+           exists( $self->_redis->{no_auto_connect_on_new} )
+        && $self->_redis->{no_auto_connect_on_new}
+        && !$self->_redis->{sock}
+    ;
 
     if ( $self->_check_maxmemory ) {
         my ( undef, $max_datasize ) = $self->_call_redis( 'CONFIG', 'GET', 'maxmemory' );
