@@ -348,7 +348,6 @@ our @ERROR = (
     'Data is too large',
     'Error in connection to Redis server',
     "Command not allowed when used memory > 'maxmemory'",
-    'job was removed by maxmemory-policy',
     'job was removed prior to use',
     'Redis error',
 );
@@ -366,6 +365,7 @@ my %job_fnames = map { $_ => 1 } @job_fields;
 
 my $uuid = new Data::UUID;
 
+my ( $_running_script_name, $_running_script_body );
 my %lua_script_body;
 my $lua_id_rgxp = '([^:]+)$';
 
@@ -612,7 +612,7 @@ This example illustrates a C<new()> call with all the valid arguments:
         check_maxmemory => $mode,   # boolean argument (default is true)
                                     # defines if attempt is made to find out
                                     # maximum available memory from Redis.
-        reconnect_on_error  => 0,   # Boolean argument (default is false).
+        reconnect_on_error  => 1,   # Boolean argument - default is true and conservative_reconnect is true.
                                     # Controls ability to force re-connection with Redis on error.
         connection_timeout  => DEFAULT_CONNECTION_TIMEOUT,  # Socket timeout for connection,
                                     # number of seconds (can be fractional).
@@ -733,9 +733,9 @@ around BUILDARGS => sub {
             $args{_use_external_connection} = 0;
             my $conf = $redis;
             $conf->{server}                 = DEFAULT_SERVER.':'.DEFAULT_PORT   unless exists $conf->{server};
-            $conf->{reconnect}              = 0                                 unless exists $conf->{reconnect};
+            $conf->{reconnect}              = 1                                 unless exists $conf->{reconnect};
             $conf->{every}                  = 1000                              unless exists $conf->{every};   # 1 ms
-            $conf->{conservative_reconnect} = 0                                 unless exists $conf->{conservative_reconnect};
+            $conf->{conservative_reconnect} = 1                                 unless exists $conf->{conservative_reconnect};
             $conf->{cnx_timeout}    = $args{connection_timeout} = $conf->{cnx_timeout}  // $args{connection_timeout}    // DEFAULT_CONNECTION_TIMEOUT;
             $conf->{read_timeout}   = $args{operation_timeout}  = $conf->{read_timeout} // $args{operation_timeout}     // DEFAULT_OPERATION_TIMEOUT;
             $conf->{write_timeout}  = $conf->{read_timeout};
@@ -1054,8 +1054,6 @@ sub add_job {
 
     my %args = ( @_ );
 
-    $self->_reconnect;
-
     my ( $id, $key );
     do {
         $self->_call_redis( 'UNWATCH' );
@@ -1149,8 +1147,6 @@ sub get_job_data {
 
     $self->_error( E_NO_ERROR );
 
-    $self->_reconnect;
-
     my $tm = time;
     my ( $job_exists, @data ) = $self->_call_redis(
         $self->_lua_script_cmd( 'get_job_data' ),
@@ -1233,8 +1229,6 @@ the jobs metadata.
 sub get_job_meta_fields {
     my ( $self, $id_source ) = @_;
 
-    $self->_reconnect;
-
     return grep { !$job_fnames{ $_ } && $_ ne $_ID_IN_QUEUE_FIELD } $self->_call_redis( 'HKEYS', $self->_jkey( $self->_get_job_id( $id_source ) ) );
 }
 
@@ -1259,8 +1253,6 @@ sub load_job {
     my $job_id = $self->_get_job_id( $id_source );
 
     $self->_error( E_NO_ERROR );
-
-    $self->_reconnect;
 
     my ( $job_exists, @job_data ) = $self->_call_redis(
         $self->_lua_script_cmd( 'load_job' ),
@@ -1361,8 +1353,6 @@ sub get_next_job {
 
     $self->_error( E_NO_ERROR );
 
-    $self->_reconnect;
-
     if ( @keys ) {
         @keys = shuffle( @keys );
 
@@ -1413,8 +1403,6 @@ sub get_next_job_id {
 
 sub _get_next_job {
     my ( $self, $full_id, $only_id ) = @_;
-
-#    $self->_reconnect;
 
     my ( $id, $expire_time ) = split ' ', $full_id;
     my $key = $self->_jkey( $id );
@@ -1471,8 +1459,6 @@ sub update_job {
     return 0 unless @modified;
 
     $self->_error( E_NO_ERROR );
-
-    $self->_reconnect;
 
     my $id = $job->id;
     my $key = $self->_jkey( $id );
@@ -1544,8 +1530,6 @@ sub delete_job {
 
     $self->_error( E_NO_ERROR );
 
-    $self->_reconnect;
-
     return $self->_call_redis(
         $self->_lua_script_cmd( 'delete_job' ),
         0,
@@ -1615,8 +1599,6 @@ sub get_job_ids {
 
     $self->_error( E_NO_ERROR );
 
-    $self->_reconnect;
-
     my @ids = $self->_call_redis(
         $self->_lua_script_cmd( 'get_job_ids' ),
         0,
@@ -1674,7 +1656,6 @@ sub ping {
     my $ret = $self->_redis->ping;
 
     $ret = ( $ret // '<undef>' ) eq 'PONG' ? 1 : 0;
-    $self->_clear_sha1 unless $ret;
 
     return $ret;
 }
@@ -1699,8 +1680,6 @@ sub quit {
     return if $] >= 5.14 && ${^GLOBAL_PHASE} eq 'DESTRUCT';
 
     $self->_error( E_NO_ERROR );
-    $self->_clear_sha1;
-
     $self->_redis->quit unless $self->_use_external_connection;
 
     return;
@@ -1766,8 +1745,6 @@ sub queue_status {
 
     $self->_error( E_NO_ERROR );
 
-    $self->_reconnect;
-
     my %qstatus = $self->_call_redis(
         $self->_lua_script_cmd( 'queue_status' ),
         0,
@@ -1804,8 +1781,6 @@ sub queue_length {
 
     $self->_error( E_NO_ERROR );
 
-    $self->_reconnect;
-
     my $queue_lenght = $self->_call_redis( 'LLEN', $self->_qkey( $maybe_queue ) );
 
     return $queue_lenght;
@@ -1828,10 +1803,12 @@ sub _redis_exception {
             || $error =~ /^Redis server closed connection/
         ) {
         $self->_error( E_NETWORK );
-
-        # For connection problem
-        $self->_clear_sha1;
         $err_msg = $self->_do_reconnect( E_NETWORK, $err_msg ) if !$self->_transaction && $self->reconnect_on_error;
+    } elsif (
+            $error =~ /^\[[^]]+\]\s+NOSCRIPT No matching script. Please use EVAL./
+        ) {
+        $self->_clear_sha1;
+        return 1;
     } elsif (
                $error =~ /[\S+] ERR command not allowed when used memory > 'maxmemory'/
             || $error =~ /[\S+] OOM command not allowed when used memory > 'maxmemory'/
@@ -1839,9 +1816,6 @@ sub _redis_exception {
         $self->_error( E_MAX_MEMORY_LIMIT );
     } else {
         $self->_error( E_REDIS );
-
-        # For possible connection problems
-        $self->_clear_sha1;
         $err_msg = $self->_do_reconnect( E_REDIS, $err_msg ) if !$self->_transaction && $self->reconnect_on_error;
     }
 
@@ -1953,12 +1927,23 @@ sub _call_redis {
         # For non-serialized fields: UTF8 can not be transferred to the Redis server
         confess format_message( '%s (utf8 in %s)', $self->_error( E_MISMATCH_ARG ), $_[1] );
     } else {
+        my $try_again;
         my @args = @_;
-        try {
-            @result = $self->_redis->$method( @args );
-        } catch {
-            $error = $_;
-        };
+        RUN_METHOD: {
+            try {
+                @result = $self->_redis->$method( @args );
+            } catch {
+                $error = $_;
+                $try_again = $self->_redis_exception( $error );
+            };
+
+            if ( $try_again && $method eq 'EVALSHA' ) {
+                $self->_lua_scripts->{ $_running_script_name } = $args[0];  # sha1
+                $args[0] = $_running_script_body;
+                $method = 'EVAL';
+                redo RUN_METHOD;
+            }
+        }
     }
 
     $self->_redis_exception( $error )
@@ -2032,7 +2017,6 @@ sub _do_reconnect {
                 && $err != E_JOB_DELETED
             )
         ) {
-        $self->_clear_sha1 if $err;
         try {
             # NOTE: socket recreated
             $self->_redis->quit;
@@ -2040,7 +2024,6 @@ sub _do_reconnect {
         } catch {
             my $error = $_;
             $err_msg = "(Not reconnected: $error)";
-            $self->_clear_sha1;
         };
     }
 
@@ -2079,11 +2062,14 @@ sub _get_job_id {
 sub _lua_script_cmd {
     my ( $self, $name ) = @_;
 
-    my $sha1 = $self->_lua_scripts->{ $name };
+    $_running_script_name = $name;
+    $_running_script_body = $lua_script_body{ $name };
+
+    my $sha1 = $self->_lua_scripts->{ $_running_script_name };
     unless ( $sha1 ) {
-        $sha1 = $self->_lua_scripts->{ $name } = sha1_hex( $lua_script_body{ $name } );
+        $sha1 = $self->_lua_scripts->{ $_running_script_name } = sha1_hex( $_running_script_body );
         unless ( ( $self->_call_redis( 'SCRIPT', 'EXISTS', $sha1 ) )[0] ) {
-            return( 'EVAL', $lua_script_body{ $name } );
+            return( 'EVAL', $_running_script_body );
         }
     }
     return( 'EVALSHA', $sha1 );

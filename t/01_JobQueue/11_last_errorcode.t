@@ -167,8 +167,8 @@ ok $jq->reconnect_on_error, 'reconnect_on_error TRUE';
 $jq->_redis->quit;
 @jobs = ();
 eval { @jobs = $jq->get_job_ids };
-is $jq->last_errorcode, E_NO_ERROR, "E_NO_ERROR";
-ok scalar( @jobs ), '@jobs is not empty';
+is $jq->last_errorcode, E_NETWORK, "E_NETWORK";
+ok !scalar( @jobs ), '@jobs is empty';
 ok $jq->_redis->ping, "server is available";
 
 new_connect();
