@@ -2451,7 +2451,7 @@ store such string as part of L<workload|Redis::JobQueue::Job/workload> / L<resul
 
 Needs Redis server version 2.8 or higher as module uses Redis Lua scripting.
 
-The use of C<maxmemory-police all*> in the F<redis.conf> file could lead to
+The use of C<maxmemory-policy all*> in the F<redis.conf> file could lead to
 a serious (but hard to detect) problem as Redis server may delete
 the job queue objects.
 
