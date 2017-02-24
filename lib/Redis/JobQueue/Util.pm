@@ -6,7 +6,7 @@ Redis::JobQueue::Util - String manipulation utilities.
 
 =head1 VERSION
 
-This documentation refers to C<Redis::JobQueue::Util> version 1.18
+This documentation refers to C<Redis::JobQueue::Util> version 1.19
 
 =cut
 
@@ -18,7 +18,7 @@ use warnings;
 
 # ENVIRONMENT ------------------------------------------------------------------
 
-our $VERSION = '1.18';
+our $VERSION = '1.19';
 
 use Exporter qw(
     import
@@ -163,6 +163,8 @@ L<https://github.com/TrackingSoft/Redis-JobQueue>
 =head1 AUTHOR
 
 Sergey Gladkov, E<lt>sgladkov@trackingsoft.comE<gt>
+
+Please use GitHub project link above to report problems or contact authors.
 
 =head1 CONTRIBUTORS
 

@@ -44,19 +44,23 @@ my %config = (
         provides                => {
             'Redis::JobQueue'       => {
                 file                    => 'lib/Redis/JobQueue.pm',
-                version                 => '1.18'
+                version                 => '1.19'
             },
             'Redis::JobQueue::Job'  => {
                 file                    => 'lib/Redis/JobQueue/Job.pm',
-                version                 => '1.18'
+                version                 => '1.19'
             },
             'Redis::JobQueue::Util' => {
                 file                    => 'lib/Redis/JobQueue/Util.pm',
-                version                 => '1.18'
+                version                 => '1.19'
             },
         },
         'meta-spec'             => { version => 2 },
         resources               => {
+            bugtracker              => {
+               web                      => 'https://github.com/TrackingSoft/Redis-JobQueue/issues',
+            },
+            homepage                => 'https://github.com/TrackingSoft/Redis-JobQueue',
             repository              => {
                 type                    => 'git',
                 url                     => 'git://github.com/TrackingSoft/Redis-JobQueue.git',

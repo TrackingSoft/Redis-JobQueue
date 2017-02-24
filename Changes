@@ -1,5 +1,6 @@
 Revision history for Redis::JobQueue package
 
+1.19 Fri Feb  24 2017
     CHANGES:
     - Ability to force re-connection with Redis on error ('reconnect_on_error' attribute).
     - $DEFAULT_CONNECTION_TIMEOUT, $DEFAULT_OPERATION_TIMEOUT constants added.
